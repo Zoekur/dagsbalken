@@ -1,0 +1,32 @@
+<vector xmlns:android=\"http://schemas.android.com/apk/res/android\"
+    android:width=\"24dp\"
+    android:height=\"24dp\"
+    android:viewportWidth=\"24\"
+    android:viewportHeight=\"24\">
+    <!-- Sun -->
+    <path
+        android:fillColor=\"#FFFFD700\"
+        android:pathData=\"M20,4 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0\"/>
+    <path
+        android:fillColor=\"#FFFFD700\"
+        android:pathData=\"M20,1 L20,3 M23,4 L21,4 M20,7 L20,5 M17,4 L19,4 M22,2 L21,3 M22,6 L21,5 M18,6 L19,5 M18,2 L19,3\"
+        android:strokeWidth=\"1\"
+        android:strokeColor=\"#FFFFD700\"/>
+
+    <!-- Body (Shorts and T-shirt) -->
+    <path
+        android:fillColor=\"#FF000000\"
+        android:pathData=\"M12,7 L12,14 M12,14 L10,18 M12,14 L14,18 M12,9 L9,11 M12,9 L15,11\"
+        android:strokeWidth=\"2\"
+        android:strokeColor=\"#FF000000\"/>
+    <!-- Head -->
+    <path
+        android:fillColor=\"#FFFFFFFF\"
+        android:pathData=\"M12,5 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0\"
+        android:strokeWidth=\"1\"
+        android:strokeColor=\"#FF000000\"/>
+    <!-- Shorts visual (Green pants from image) -->
+    <path
+        android:fillColor=\"#FF00FF00\"
+        android:pathData=\"M11,14 L13,14 L13,16 L11,16 Z\"/>
+</vector>
