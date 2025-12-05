@@ -1,0 +1,118 @@
+package com.dagsbalken.app.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+enum class ThemeOption(val displayName: String) {
+    NordicCalm("Nordic Calm"),
+    SolarDawn("Solar Dawn")
+}
+
+data class ThemePaletteColors(
+    val primary: Color,
+    val onPrimary: Color,
+    val primaryContainer: Color,
+    val onPrimaryContainer: Color,
+    val secondary: Color,
+    val onSecondary: Color,
+    val secondaryContainer: Color,
+    val onSecondaryContainer: Color,
+    val tertiary: Color,
+    val onTertiary: Color,
+    val tertiaryContainer: Color,
+    val onTertiaryContainer: Color,
+    val background: Color,
+    val onBackground: Color,
+    val surface: Color,
+    val onSurface: Color,
+    val surfaceVariant: Color,
+    val onSurfaceVariant: Color,
+    val outline: Color,
+)
+
+val NordicCalmLightPalette = ThemePaletteColors(
+    primary = Color(0xFF2D5A6A),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFBCE6FF),
+    onPrimaryContainer = Color(0xFF051F2C),
+    secondary = Color(0xFF4C6F6B),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFCDE8E0),
+    onSecondaryContainer = Color(0xFF0A241F),
+    tertiary = Color(0xFF3E5C7A),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFD6E3FF),
+    onTertiaryContainer = Color(0xFF0E243A),
+    background = Color(0xFFF6F8F9),
+    onBackground = Color(0xFF111827),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF111827),
+    surfaceVariant = Color(0xFFDAE4E8),
+    onSurfaceVariant = Color(0xFF3F4C52),
+    outline = Color(0xFF6A7A81),
+)
+
+val NordicCalmDarkPalette = ThemePaletteColors(
+    primary = Color(0xFF89C9E6),
+    onPrimary = Color(0xFF0C2A38),
+    primaryContainer = Color(0xFF1F4453),
+    onPrimaryContainer = Color(0xFFBCE6FF),
+    secondary = Color(0xFFB1CCC4),
+    onSecondary = Color(0xFF1F3531),
+    secondaryContainer = Color(0xFF345149),
+    onSecondaryContainer = Color(0xFFCDE8E0),
+    tertiary = Color(0xFFABC7EA),
+    onTertiary = Color(0xFF142D45),
+    tertiaryContainer = Color(0xFF294463),
+    onTertiaryContainer = Color(0xFFD6E3FF),
+    background = Color(0xFF0B1218),
+    onBackground = Color(0xFFE2E8F0),
+    surface = Color(0xFF0F1720),
+    onSurface = Color(0xFFE2E8F0),
+    surfaceVariant = Color(0xFF3F4C52),
+    onSurfaceVariant = Color(0xFFBEC8CD),
+    outline = Color(0xFF85939A),
+)
+
+val SolarDawnLightPalette = ThemePaletteColors(
+    primary = Color(0xFFCC5A1A),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFFFD8C4),
+    onPrimaryContainer = Color(0xFF2C0A00),
+    secondary = Color(0xFF965A16),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFFFDEAB),
+    onSecondaryContainer = Color(0xFF301400),
+    tertiary = Color(0xFF7C3E65),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFD7EF),
+    onTertiaryContainer = Color(0xFF310B2A),
+    background = Color(0xFFFFF8F4),
+    onBackground = Color(0xFF1F130E),
+    surface = Color(0xFFFFFBFA),
+    onSurface = Color(0xFF201915),
+    surfaceVariant = Color(0xFFF0DFD7),
+    onSurfaceVariant = Color(0xFF52443D),
+    outline = Color(0xFF85746C),
+)
+
+val SolarDawnDarkPalette = ThemePaletteColors(
+    primary = Color(0xFFFFB78D),
+    onPrimary = Color(0xFF471700),
+    primaryContainer = Color(0xFF673000),
+    onPrimaryContainer = Color(0xFFFFD8C4),
+    secondary = Color(0xFFF3BD7A),
+    onSecondary = Color(0xFF4D2700),
+    secondaryContainer = Color(0xFF6E3C00),
+    onSecondaryContainer = Color(0xFFFFDEAB),
+    tertiary = Color(0xFFEEB5D9),
+    onTertiary = Color(0xFF4B193E),
+    tertiaryContainer = Color(0xFF632A55),
+    onTertiaryContainer = Color(0xFFFFD7EF),
+    background = Color(0xFF15100C),
+    onBackground = Color(0xFFF4E5DD),
+    surface = Color(0xFF1C1511),
+    onSurface = Color(0xFFECDDD4),
+    surfaceVariant = Color(0xFF52443D),
+    onSurfaceVariant = Color(0xFFD3C2B9),
+    outline = Color(0xFF9C8C84),
+)
