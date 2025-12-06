@@ -1,9 +1,20 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="deploymentTargetSelector">
+<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<project version=\"4\">
+  <component name=\"deploymentTargetSelector\">
     <selectionStates>
-      <SelectionState runConfigName="app">
-        <option name="selectionMode" value="DROPDOWN" />
+      <SelectionState runConfigName=\"app\">
+        <option name=\"selectionMode\" value=\"DROPDOWN\" />
+        <DropdownSelection timestamp=\"2025-11-30T05:32:26.590368200Z\">
+          <Target type=\"DEFAULT_BOOT\">
+            <handle>
+              <DeviceId pluginId=\"LocalEmulator\" identifier=\"path=C:\\Users\\cr0wn\\.android\\avd\\Pixel_9_Pro_XL.avd\" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName=\"LinearClockConfigActivity\">
+        <option name=\"selectionMode\" value=\"DROPDOWN\" />
       </SelectionState>
     </selectionStates>
   </component>
