@@ -33,13 +33,13 @@ class WeatherWorker(
             val precipChance: Int
 
             if (settings.useCurrentLocation) {
-                // Simulating GPS location weather (random but consistent for \"local\")
+                // Simulating GPS location weather (random but consistent for "local")
                 temp = (-5..25).random()
                 precipChance = (0..50).random()
             } else {
                  // Simulating Manual location weather
                  if (settings.manualLocationName.isNotBlank()) {
-                     // Generate \"deterministic\" random based on name length to simulate different weather for different cities
+                     // Generate "deterministic" random based on name length to simulate different weather for different cities
                      val seed = settings.manualLocationName.length
                      temp = (seed % 30)
                      precipChance = (seed * 10 % 100)
@@ -68,7 +68,7 @@ class WeatherWorker(
     }
 
     companion object {
-        private const val UNIQUE_WORK_NAME = \"weather_worker_periodic\"
+        private const val UNIQUE_WORK_NAME = "weather_worker_periodic"
 
         fun schedule(context: Context) {
             val constraints = Constraints.Builder()

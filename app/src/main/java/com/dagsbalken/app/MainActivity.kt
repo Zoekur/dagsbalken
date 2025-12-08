@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val themePrefs = ThemePreferences(applicationContext)
-                @Suppress(\"UNCHECKED_CAST\")
+                @Suppress("UNCHECKED_CAST")
                 return MainViewModel(themePrefs) as T
             }
         }
@@ -115,19 +115,19 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = \"home\") {
-                        composable(\"home\") {
+                    NavHost(navController = navController, startDestination = "home") {
+                        composable("home") {
                             LinearClockScreen(
                                 themeOption = themeOption,
-                                onThemeOptionChange = { option ->
-                                    viewModel.onThemeOptionChange(option)
+                                onThemeOptionChange = {
+                                    viewModel.onThemeOptionChange(it)
                                 },
                                 onSettingsClick = {
-                                    navController.navigate(\"settings\")
+                                    navController.navigate("settings")
                                 }
                             )
                         }
-                        composable(\"settings\") {
+                        composable("settings") {
                             SettingsScreen(onBack = {
                                 navController.popBackStack()
                             })
@@ -202,6 +202,8 @@ fun LinearClockScreen(
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             launcher.launch(Manifest.permission.READ_CALENDAR)
+        } else {
+            loadEvents()
         }
     }
 
@@ -210,7 +212,7 @@ fun LinearClockScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .systemBarsPadding() // Fixar \"black bar\" problemet genom att undvika system bars
+            .systemBarsPadding() // Fixar "black bar" problemet genom att undvika system bars
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -221,7 +223,7 @@ fun LinearClockScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = \"Dagsbalken\",
+                text = "Dagsbalken",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
@@ -230,7 +232,7 @@ fun LinearClockScreen(
             IconButton(onClick = onSettingsClick) {
                 Icon(
                     imageVector = DagsbalkenIcons.Settings,
-                    contentDescription = \"Settings\",
+                    contentDescription = "Settings",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -276,7 +278,7 @@ fun LinearClockScreen(
 
         // Version info
         Text(
-            text = \"v${BuildConfig.VERSION_NAME}\",
+            text = "v${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.labelSmall,
             color = Color.Gray.copy(alpha = 0.5f)
         )
@@ -388,8 +390,8 @@ fun LinearDayCard(
                     size = Size(passedWidth, trackHeight),
                     cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
                 )
-                 // Om \"passed\" är bredare än radiens kurva, rita en fyrkant över högra hörnen
-                 // för att få en skarp kant mot \"framtiden\" (eller behåll rundad om det är designen)
+                 // Om "passed" är bredare än radiens kurva, rita en fyrkant över högra hörnen
+                 // för att få en skarp kant mot "framtiden" (eller behåll rundad om det är designen)
                  // Här behåller vi den klippt vid 'currentX' men säkerställer att vi inte ritar utanför vänster kant.
                  if (passedWidth > cornerRadiusPx) {
                      // Fyll ut högra hörnen så det ser ut som progress bar som fortsätter
@@ -475,19 +477,15 @@ fun NextEventCard(events: List<DayEvent>, now: LocalTime) {
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(next.icon ?: \"•\", fontSize = 22.sp, modifier = Modifier.padding(end = 8.dp))
+        Text(next.icon ?: "•", fontSize = 22.sp, modifier = Modifier.padding(end = 8.dp))
         Column {
             Text(next.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
             Text(
-                text = \"${next.start.format(DateTimeFormatter.ofPattern(\"HH:mm\"))}${
+                text = "${next.start.format(DateTimeFormatter.ofPattern("HH:mm"))}${
                     next.end?.let {
-                        \" – ${
-                            it.format(
-                                DateTimeFormatter.ofPattern(\"HH:mm\")
-                            )
-                        }\"
-                    } ?: \"\"
-                }\",
+                        " – ${it.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+                    } ?: ""
+                }",
                 color = Color(0xFF6B7280),
                 fontSize = 14.sp
             )
@@ -518,25 +516,25 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     Spacer(Modifier.height(8.dp))
-                    Text(\"Laddar väderdata...\", fontSize = 14.sp, color = Color.Gray)
+                    Text("Laddar väderdata...", fontSize = 14.sp, color = Color.Gray)
                 }
             } else {
                 // Visar riktig data
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        \"Väderinformation\",
+                        "Väderinformation",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        \"${data.temperatureCelsius}°C\",
+                        "${data.temperatureCelsius}°C",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        \"${data.precipitationChance}% risk för nederbörd\",
+                        "${data.precipitationChance}% risk för nederbörd",
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
@@ -579,7 +577,7 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
                 // Visar klädråd baserat på logik i WeatherRepository
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        \"Klädråd\",
+                        "Klädråd",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
