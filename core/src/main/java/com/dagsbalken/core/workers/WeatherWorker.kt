@@ -10,7 +10,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.dagsbalken.core.data.WeatherRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
@@ -22,36 +21,8 @@ class WeatherWorker(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             val repository = WeatherRepository(context)
-
-            // Fetch settings to determine location source
-            val settings = repository.locationSettingsFlow.first()
-
-            // Mock weather fetching logic
-            val temp: Int
-            val precipChance: Int
-
-            if (settings.useCurrentLocation) {
-                // Simulating GPS location weather (random but consistent for "local")
-                temp = (-5..25).random()
-                precipChance = (0..50).random()
-            } else {
-                 // Simulating Manual location weather
-                 if (settings.manualLocationName.isNotBlank()) {
-                     // Generate "deterministic" random based on name length to simulate different weather for different cities
-                     val seed = settings.manualLocationName.length
-                     temp = (seed % 30)
-                     precipChance = (seed * 10 % 100)
-                 } else {
-                     temp = 20
-                     precipChance = 0
-                 }
-            }
-
-            repository.saveWeatherData(temp, precipChance)
-
-            // Widgeten kommer att uppdateras automatiskt eftersom den observerar dataflödet.
-            // Vi behöver inte längre uppdatera den manuellt här.
-
+            // Delegate the fetch/save logic to the repository (keeps behavior consistent with app-triggered fetches)
+            repository.fetchAndSaveWeatherOnce()
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()

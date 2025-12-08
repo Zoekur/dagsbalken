@@ -15,8 +15,8 @@ import org.junit.runner.RunWith
 class ExampleInstrumentedTest {
     @Test
     fun useAppContext() {
-        // Context of the app under test.
+        // Context of the com.com.dagsbalken.app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals(\"com.dagsbalken.app\", appContext.packageName)
+        assertEquals(\"com.com.dagsbalken.com.com.dagsbalken.app\", appContext.packageName)
     }
 }
