@@ -1,44 +1,32 @@
-# Built application files
-*.apk
-*.aab
-
-# Files for the ART/Dalvik VM
-*.dex
-
-# Built native files
-**/build/intermediates/cmake/
-**/build/intermediates/ndk/
-**/build/intermediates/ndkBuild/
-
-# Built class files
-*.class
-
-# Generated files
-**/build/
+# Gradle cache
 .gradle/
+
+# Build output
+build/
+
+# Android Studio generated files
+*.iml
+.idea/
 captured_errors.txt
 
-# Local configuration files
+# Local configuration
 local.properties
-
-# Proguard generated files
-proguard/
-
-# Log files
-*.log
 
 # Keystore files
 *.jks
 *.keystore
 
-# Android Studio files
-.idea/
-*.iml
+# Application files
+*.apk
+*.aab
+*.dex
 
-# Gradle files
-.gradle/
-build/
+# Proguard files
+proguard/
 
-# Misc
+# Log files
+*.log
+
+# OS-specific files
 .DS_Store
 **/thumbs.db
