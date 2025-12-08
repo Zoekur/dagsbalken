@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Dagsbalken</string>
+    <string name="widget_name">Dagsbalken</string>
+    <string name="widget_description">Visar en linjär klocka över dagen och kommande händelser.</string>
+</resources>

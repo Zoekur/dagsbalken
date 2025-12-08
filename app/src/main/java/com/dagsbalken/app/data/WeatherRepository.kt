@@ -13,37 +13,37 @@ import kotlinx.coroutines.flow.map
 
 // --- DataStore Setup ---
 // Skapar en singleton DataStore för att lagra väderdata för huvudappen
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = \"main_app_weather\")
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "main_app_weather")
 
 // Nycklar för DataStore
 object WeatherPreferencesKeys {
-    val TEMP_CELSIUS = intPreferencesKey(\"temp_c\")
-    val PRECIP_CHANCE = intPreferencesKey(\"precip_chance_pct\")
-    val IS_COLD_ADVICE = stringPreferencesKey(\"advice_icon\") // Sparar ikonen
-    val ADVICE_TEXT = stringPreferencesKey(\"advice_text\") // Sparar rådtexten
-    val CLOTHING_TYPE = stringPreferencesKey(\"clothing_type\") // Sparar typ av kläder som sträng
-    val DATA_LOADED = booleanPreferencesKey(\"data_loaded\")
+    val TEMP_CELSIUS = intPreferencesKey("temp_c")
+    val PRECIP_CHANCE = intPreferencesKey("precip_chance_pct")
+    val IS_COLD_ADVICE = stringPreferencesKey("advice_icon") // Sparar ikonen
+    val ADVICE_TEXT = stringPreferencesKey("advice_text") // Sparar rådtexten
+    val CLOTHING_TYPE = stringPreferencesKey("clothing_type") // Sparar typ av kläder som sträng
+    val DATA_LOADED = booleanPreferencesKey("data_loaded")
 
     // New Location Settings
-    val USE_CURRENT_LOCATION = booleanPreferencesKey(\"use_current_location\")
-    val MANUAL_LOCATION_NAME = stringPreferencesKey(\"manual_location_name\")
+    val USE_CURRENT_LOCATION = booleanPreferencesKey("use_current_location")
+    val MANUAL_LOCATION_NAME = stringPreferencesKey("manual_location_name")
 }
 
 // Data class för att representera väderdata i Compose
 data class WeatherData(
     val temperatureCelsius: Int = 0,
     val precipitationChance: Int = 0, // i procent (0-100)
-    val adviceIcon: String = \"☁\uFE0F\",
-    val adviceText: String = \"Laddar väderdata...\",
-    val clothingType: String = \"NORMAL\",
+    val adviceIcon: String = "☁️",
+    val adviceText: String = "Laddar väderdata...",
+    val clothingType: String = "NORMAL",
     val isDataLoaded: Boolean = false
 ) {
     fun getClothingResourceId(): Int {
         return when (clothingType) {
-            \"COLD\" -> com.dagsbalken.app.R.drawable.ic_clothing_cold
-            \"HOT\" -> com.dagsbalken.app.R.drawable.ic_clothing_hot
-            \"RAIN\" -> com.dagsbalken.app.R.drawable.ic_clothing_rain
-            \"NORMAL\" -> com.dagsbalken.app.R.drawable.ic_clothing_normal
+            "COLD" -> com.dagsbalken.app.R.drawable.ic_clothing_cold
+            "HOT" -> com.dagsbalken.app.R.drawable.ic_clothing_hot
+            "RAIN" -> com.dagsbalken.app.R.drawable.ic_clothing_rain
+            "NORMAL" -> com.dagsbalken.app.R.drawable.ic_clothing_normal
             else -> com.dagsbalken.app.R.drawable.ic_clothing_normal
         }
     }
@@ -52,7 +52,7 @@ data class WeatherData(
 // Data class for location settings
 data class WeatherLocationSettings(
     val useCurrentLocation: Boolean = true,
-    val manualLocationName: String = \"\"
+    val manualLocationName: String = ""
 )
 
 // Konstanter för klädrådslogik (enligt din skiss)
@@ -75,9 +75,9 @@ class WeatherRepository(private val context: Context) {
             WeatherData(
                 temperatureCelsius = prefs[WeatherPreferencesKeys.TEMP_CELSIUS] ?: 15,
                 precipitationChance = prefs[WeatherPreferencesKeys.PRECIP_CHANCE] ?: 0,
-                adviceIcon = prefs[WeatherPreferencesKeys.IS_COLD_ADVICE] ?: \"☁\uFE0F\",
-                adviceText = prefs[WeatherPreferencesKeys.ADVICE_TEXT] ?: \"Väntar på data...\",
-                clothingType = prefs[WeatherPreferencesKeys.CLOTHING_TYPE] ?: \"NORMAL\",
+                adviceIcon = prefs[WeatherPreferencesKeys.IS_COLD_ADVICE] ?: "☁️",
+                adviceText = prefs[WeatherPreferencesKeys.ADVICE_TEXT] ?: "Väntar på data...",
+                clothingType = prefs[WeatherPreferencesKeys.CLOTHING_TYPE] ?: "NORMAL",
                 isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false
             )
         }
@@ -87,7 +87,7 @@ class WeatherRepository(private val context: Context) {
         .map { prefs ->
             WeatherLocationSettings(
                 useCurrentLocation = prefs[WeatherPreferencesKeys.USE_CURRENT_LOCATION] ?: true,
-                manualLocationName = prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] ?: \"\"
+                manualLocationName = prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] ?: ""
             )
         }
 
@@ -118,27 +118,27 @@ class WeatherRepository(private val context: Context) {
         return when {
             // Varma kläder: -5 grader eller lägre (enligt skissen)
             temp <= ClothingAdvice.COLD_THRESHOLD_C -> Triple(
-                \"Rekommenderar varma kläder: Jacka, mössa, handskar.\",
-                \"\uD83E\uDDE5\uD83E\uDDE3\uD83E\uDDE4\",
-                \"COLD\"
+                "Rekommenderar varma kläder: Jacka, mössa, handskar.",
+                "🧥🧣🧤",
+                "COLD"
             )
             // Lätta kläder: +30 grader eller högre (enligt skissen)
             temp > ClothingAdvice.HOT_THRESHOLD_C -> Triple(
-                \"Välj lätta kläder: Shorts och linne.\",
-                \"\uD83E\uDE73\uD83D\uDC55☀\uFE0F\",
-                \"HOT\"
+                "Välj lätta kläder: Shorts och linne.",
+                "🩳👕☀️",
+                "HOT"
             )
             // Regn
             precipChance >= ClothingAdvice.PRECIPITATION_THRESHOLD_PCT -> Triple(
-                \"Hög risk för nederbörd (${precipChance}%). Ta med paraply eller regnjacka!\",
-                \"☔\uFE0F\uD83C\uDF27\uFE0F\",
-                \"RAIN\"
+                "Hög risk för nederbörd (${precipChance}%). Ta med paraply eller regnjacka!",
+                "☔️🌧️",
+                "RAIN"
             )
             // Normalt
             else -> Triple(
-                \"Lätt jacka eller tröja är lagom.\",
-                \"\uD83D\uDC5A\",
-                \"NORMAL\"
+                "Lätt jacka eller tröja är lagom.",
+                "👕",
+                "NORMAL"
             )
         }
     }

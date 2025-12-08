@@ -1,50 +1,49 @@
-<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<manifest package=\"com.dagsbalken.app\"
-    xmlns:android=\"http://schemas.android.com/apk/res/android\">
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name=\"android.permission.INTERNET\" />
-    <uses-permission android:name=\"android.permission.READ_CALENDAR\" />
-    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />
-    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
-        android:label=\"Dagsbalken\"
-        android:icon=\"@mipmap/ic_launcher\"
-        android:allowBackup=\"true\"
-        android:supportsRtl=\"true\">
+        android:label="Dagsbalken"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:supportsRtl="true">
         <activity
-            android:name=\".MainActivity\"
-            android:exported=\"true\">
+            android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
-                <action android:name=\"android.intent.action.MAIN\"/>
-                <category android:name=\"android.intent.category.LAUNCHER\"/>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
 
         <receiver
-            android:name=\".widget.LinearClockWidgetReceiver\"
-            android:exported=\"true\"
-            android:label=\"@string/widget_name\">
+            android:name=".widget.LinearClockWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_name">
             <intent-filter>
-                <action android:name=\"android.appwidget.action.APPWIDGET_UPDATE\" />
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
-                android:name=\"android.appwidget.provider\"
-                android:resource=\"@xml/linear_clock_widget_info\" />
+                android:name="android.appwidget.provider"
+                android:resource="@xml/linear_clock_widget_info" />
         </receiver>
 
         <activity
-            android:name=\".widget.LinearClockConfigActivity\"
-            android:exported=\"true\"
-            android:theme=\"@style/Theme.Dagsbalken\" />
+            android:name=".widget.LinearClockConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Dagsbalken" />
 
         <receiver
-            android:name=\".widget.BootCompletedReceiver\"
-            android:enabled=\"true\"
-            android:exported=\"true\">
+            android:name=".widget.BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
-                <action android:name=\"android.intent.action.BOOT_COMPLETED\" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 
