@@ -1,4 +1,4 @@
-package com.dagsbalken.app.data
+package com.example.core.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore

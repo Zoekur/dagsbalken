@@ -1,4 +1,4 @@
-package com.dagsbalken.app.data
+package com.example.core.data
 
 import androidx.compose.ui.graphics.Color
 import java.time.LocalTime

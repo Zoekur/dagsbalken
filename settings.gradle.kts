@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Dagsbalken"
 include(":app")
+include(":core")

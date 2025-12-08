@@ -35,8 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.dagsbalken.app.data.WeatherLocationSettings
-import com.dagsbalken.app.data.WeatherRepository
+import com.dagsbalken.core.data.WeatherLocationSettings
+import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import kotlinx.coroutines.launch
 

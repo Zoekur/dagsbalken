@@ -68,10 +68,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.dagsbalken.app.data.CalendarRepository
-import com.dagsbalken.app.data.DayEvent
-import com.dagsbalken.app.data.WeatherData
-import com.dagsbalken.app.data.WeatherRepository
+import com.dagsbalken.core.data.CalendarRepository
+import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.data.WeatherData
+import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.settings.SettingsScreen
@@ -79,7 +79,7 @@ import com.dagsbalken.app.ui.settings.ThemePreferences
 import com.dagsbalken.app.ui.theme.DagsbalkenTheme
 import com.dagsbalken.app.ui.theme.ThemeOption
 import com.dagsbalken.app.ui.theme.ThemeSelector
-import com.dagsbalken.app.workers.WeatherWorker
+import com.dagsbalken.core.workers.WeatherWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -108,8 +108,7 @@ class MainActivity : ComponentActivity() {
         WeatherWorker.schedule(applicationContext)
 
         setContent {
-            val themeOption by viewModel.themeOptionFlow
-                .collectAsState(initial = ThemeOption.NordicCalm)
+            val themeOption by viewModel.themeOptionFlow.collectAsState(initial = ThemeOption.NordicCalm)
 
             DagsbalkenTheme(themeOption = themeOption) {
                 Surface(Modifier.fillMaxSize()) {

@@ -1,8 +1,11 @@
-package com.dagsbalken.app.data
+package com.example.core.data
 
+import android.Manifest
 import android.content.ContentUris
 import android.content.Context
+import android.content.pm.PackageManager
 import android.provider.CalendarContract
+import androidx.compose.ui.graphics.Color
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -14,7 +17,7 @@ class CalendarRepository(private val context: Context) {
 
     suspend fun getEventsForToday(): List<DayEvent> = withContext(Dispatchers.IO) {
         // Kontrollera behörighet först
-        if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (context.checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             return@withContext emptyList<DayEvent>()
         }
 
@@ -69,7 +72,7 @@ class CalendarRepository(private val context: Context) {
                             title = title,
                             start = startTime,
                             end = endTime,
-                            color = androidx.compose.ui.graphics.Color(color)
+                            color = Color(color)
                         )
                     )
                 }

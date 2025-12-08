@@ -1,7 +1,6 @@
-package com.dagsbalken.app.workers
+package com.dagsbalken.core.workers
 
 import android.content.Context
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -9,8 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.dagsbalken.app.data.WeatherRepository
-import com.dagsbalken.app.widget.LinearClockWidget
+import com.dagsbalken.core.data.WeatherRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -51,14 +49,8 @@ class WeatherWorker(
 
             repository.saveWeatherData(temp, precipChance)
 
-            // Update all widgets
-            val manager = GlanceAppWidgetManager(context)
-            val glanceIds = manager.getGlanceIds(LinearClockWidget::class.java)
-
-            glanceIds.forEach { glanceId ->
-                // Trigger widget update.
-                LinearClockWidget.update(context, glanceId)
-            }
+            // Widgeten kommer att uppdateras automatiskt eftersom den observerar dataflödet.
+            // Vi behöver inte längre uppdatera den manuellt här.
 
             Result.success()
         } catch (e: Exception) {
