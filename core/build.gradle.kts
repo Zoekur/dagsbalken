@@ -38,4 +38,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
+
+    // HTTP client for network calls
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
 }
