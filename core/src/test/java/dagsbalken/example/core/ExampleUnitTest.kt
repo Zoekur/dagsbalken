@@ -1,4 +1,4 @@
-package com.example.core
+package dagsbalken.example.core
 
 import org.junit.Test
 
