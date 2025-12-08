@@ -17,14 +17,8 @@ android {
         minSdk = 33
         targetSdk = 36
 
-        val gitCommitCount = try {
-            "git rev-list --count HEAD".execute().trim().toInt()
-        } catch (e: Exception) {
-            1
-        }
-
-        versionCode = gitCommitCount
-        versionName = "1.0.$gitCommitCount"
+        versionCode = 1
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -34,7 +28,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -43,12 +37,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = "1.8"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     buildFeatures {
@@ -58,12 +48,6 @@ android {
         buildConfig = true
     }
 
-    // TAS BORT: 'composeOptions' behövs inte längre när du använder 'kotlin.compose'-pluginen,
-    // eftersom den automatiskt väljer rätt kompilatorversion baserat på din Kotlin-version.
-    // composeOptions {
-    //     kotlinCompilerExtensionVersion = "1.5.11"
-    // }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -71,7 +55,9 @@ android {
     }
 }
 
-fun String.execute(): String = Runtime.getRuntime().exec(this).inputStream.reader().readText()
+kotlin {
+    jvmToolchain(17)
+}
 
 // Allt beroende (dependencies) ska ligga i ett enda block.
 dependencies {
