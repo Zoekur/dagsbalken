@@ -1,32 +1,32 @@
 plugins {
 
-        alias(libs.plugins.android.application)
-        alias(libs.plugins.org.jetbrains.kotlin.android)
-        alias(libs.plugins.compose.compiler) // <-- Correct way to apply the plugin
-        id(\"org.jetbrains.kotlin.plugin.parcelize\")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.org.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 android {
-    namespace = \"com.dagsbalken.app\"
+    namespace = "com.dagsbalken.app"
     // SDK 34 är en stabil och bra version att kompilera mot.
     compileSdk = 36
 
     defaultConfig {
-        applicationId = \"com.dagsbalken.app\"
+        applicationId = "com.dagsbalken.app"
         // minSdk 33 är ett bra val för moderna funktioner som Glance.
         minSdk = 33
         targetSdk = 36
 
         val gitCommitCount = try {
-            \"git rev-list --count HEAD\".execute().trim().toInt()
+            "git rev-list --count HEAD".execute().trim().toInt()
         } catch (e: Exception) {
             1
         }
 
         versionCode = gitCommitCount
-        versionName = \"1.0.$gitCommitCount\"
+        versionName = "1.0.$gitCommitCount"
 
-        testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -36,8 +36,8 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(
-                getDefaultProguardFile(\"proguard-android-optimize.txt\"),
-                \"proguard-rules.pro\"
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
             )
         }
     }
@@ -48,7 +48,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = \"1.8\"
+        jvmTarget = "1.8"
     }
 
     buildFeatures {
@@ -61,12 +61,12 @@ android {
     // TAS BORT: 'composeOptions' behövs inte längre när du använder 'kotlin.compose'-pluginen,
     // eftersom den automatiskt väljer rätt kompilatorversion baserat på din Kotlin-version.
     // composeOptions {
-    //     kotlinCompilerExtensionVersion = \"1.5.11\"
+    //     kotlinCompilerExtensionVersion = "1.5.11"
     // }
 
     packaging {
         resources {
-            excludes += \"/META-INF/{AL2.0,LGPL2.1}\"
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 }
@@ -82,7 +82,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     // Jetpack Compose
-    // Använder \"Bill of Materials\" (BOM) för att hantera Compose-versioner.
+    // Använder "Bill of Materials" (BOM) för att hantera Compose-versioner.
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
