@@ -35,9 +35,10 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
-import com.dagsbalken.app.data.CalendarRepository
-import com.dagsbalken.app.data.WeatherRepository
-import com.dagsbalken.app.data.DayEvent
+import com.dagsbalken.core.data.CalendarRepository
+import com.dagsbalken.core.data.WeatherRepository
+import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.data.WeatherData
 import java.time.LocalTime
 
 object LinearClockWidget : GlanceAppWidget() {
@@ -60,7 +61,7 @@ object LinearClockWidget : GlanceAppWidget() {
 
 @Composable
 private fun LinearClockWidgetContent(
-    weatherData: com.dagsbalken.app.data.WeatherData?,
+    weatherData: WeatherData?,
     events: List<DayEvent>
 ) {
     val context = LocalContext.current

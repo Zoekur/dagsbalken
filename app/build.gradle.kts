@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.dagsbalken.app"
-    // SDK 34 är en stabil och bra version att kompilera mot.
+        // SDK 36 är en stabil och bra version att kompilera mot.
     compileSdk = 36
 
     defaultConfig {
@@ -52,6 +52,7 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+
     }
 }
 
@@ -61,6 +62,7 @@ kotlin {
 
 // Allt beroende (dependencies) ska ligga i ett enda block.
 dependencies {
+    implementation(project(":core"))
     // Kärnbibliotek
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
