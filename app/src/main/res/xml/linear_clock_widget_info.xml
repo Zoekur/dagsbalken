@@ -1,12 +1,12 @@
-<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<AppWidgetProviderInfo xmlns:android=\"http://schemas.android.com/apk/res/android\"
-    android:minWidth=\"250dp\"
-    android:minHeight=\"72dp\"
-    android:description=\"@string/widget_name\"
-    android:updatePeriodMillis=\"0\"
-    android:initialLayout=\"@layout/widget_placeholder\"
-    android:widgetCategory=\"home_screen\"
-    android:resizeMode=\"horizontal|vertical\"
-    android:previewImage=\"@drawable/ic_launcher_foreground\"
-    android:autoAdvanceViewId=\"@+id/auto_advance\"
-    android:configure=\"com.dagsbalken.app.widget.LinearClockConfigActivity\" />
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="72dp"
+    android:updatePeriodMillis="0"
+    android:previewImage="@drawable/ic_launcher_foreground"
+    android:initialLayout="@layout/widget_placeholder"
+    android:configure="com.dagsbalken.app.widget.LinearClockConfigActivity"
+    android:description="@string/widget_description"
+    android:widgetCategory="home_screen"
+    android:resizeMode="horizontal|vertical"
+    android:label="@string/widget_name" />

@@ -7,10 +7,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class CalendarRepository(private val context: Context) {
 
-    suspend fun getEventsForToday(): List<DayEvent> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    suspend fun getEventsForToday(): List<DayEvent> = withContext(Dispatchers.IO) {
         // Kontrollera behörighet först
         if (context.checkSelfPermission(android.Manifest.permission.READ_CALENDAR) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             return@withContext emptyList<DayEvent>()
@@ -26,7 +28,7 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.Instances.DISPLAY_COLOR
         )
 
-        // Sätt upp tid för \"idag\" med java.time
+        // Sätt upp tid för "idag" med java.time
         val zoneId = ZoneId.systemDefault()
         val today = LocalDate.now(zoneId)
         val startOfDayMillis = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
@@ -43,17 +45,17 @@ class CalendarRepository(private val context: Context) {
                 projection,
                 null,
                 null,
-                \"${CalendarContract.Instances.BEGIN} ASC\"
+                "${CalendarContract.Instances.BEGIN} ASC"
             )?.use { cursor ->
-                val idIdx = cursor.getColumnIndex(CalendarContract.Instances.EVENT_ID)
-                val titleIdx = cursor.getColumnIndex(CalendarContract.Instances.TITLE)
-                val beginIdx = cursor.getColumnIndex(CalendarContract.Instances.BEGIN)
-                val endIdx = cursor.getColumnIndex(CalendarContract.Instances.END)
-                val colorIdx = cursor.getColumnIndex(CalendarContract.Instances.DISPLAY_COLOR)
+                val idIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID)
+                val titleIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)
+                val beginIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)
+                val endIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.END)
+                val colorIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR)
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(idIdx)
-                    val title = cursor.getString(titleIdx) ?: \"No Title\"
+                    val title = cursor.getString(titleIdx) ?: "No Title"
                     val begin = cursor.getLong(beginIdx)
                     val end = cursor.getLong(endIdx)
                     val color = cursor.getInt(colorIdx)
