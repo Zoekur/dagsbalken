@@ -256,6 +256,7 @@ fun LinearClockScreen(
         Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
