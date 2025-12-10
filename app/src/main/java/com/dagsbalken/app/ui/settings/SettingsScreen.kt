@@ -44,6 +44,8 @@ import com.dagsbalken.core.data.WeatherLocationSettings
 import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,18 +168,61 @@ fun SettingsScreen(
             // Manual Location Input (Visible if Current Location is OFF)
             if (!locationSettings.useCurrentLocation) {
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = manualLocationText,
-                    onValueChange = { newName: String ->
-                        manualLocationText = newName
-                        scope.launch {
-                            weatherRepository.saveLocationSettings(false, newName)
+
+                var suggestions by remember { mutableStateOf(emptyList<WeatherRepository.LocationSuggestion>()) }
+                var showSuggestions by remember { mutableStateOf(false) }
+                // Use a ref to hold the current search job to cancel it on new input
+                var searchJob by remember { mutableStateOf<Job?>(null) }
+
+                Column {
+                    OutlinedTextField(
+                        value = manualLocationText,
+                        onValueChange = { newName: String ->
+                            manualLocationText = newName
+                            // Debounce logic
+                            searchJob?.cancel()
+                            searchJob = scope.launch {
+                                if (newName.length >= 2) {
+                                    delay(500) // Debounce 500ms
+                                    suggestions = weatherRepository.searchLocations(newName)
+                                    showSuggestions = suggestions.isNotEmpty()
+                                } else {
+                                    showSuggestions = false
+                                }
+                            }
+                        },
+                        label = { Text("Ange ort") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    if (showSuggestions) {
+                        // Using a simple column or Box for suggestions below the field
+                        // In a real app we might use ExposedDropdownMenuBox, but standard DropdownMenu works too
+                        DropdownMenu(
+                            expanded = showSuggestions,
+                            onDismissRequest = { showSuggestions = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                DropdownMenuItem(
+                                    text = { Text(suggestion.displayName()) },
+                                    onClick = {
+                                        manualLocationText = suggestion.displayName()
+                                        showSuggestions = false
+                                        scope.launch {
+                                            // Cache coordinates so fetchWeather finds them
+                                            weatherRepository.cacheManualLocation(suggestion.displayName(), suggestion.latitude, suggestion.longitude)
+                                            weatherRepository.saveLocationSettings(false, suggestion.displayName())
+                                            // Trigger fetch
+                                            weatherRepository.fetchAndSaveWeatherOnce()
+                                        }
+                                    }
+                                )
+                            }
                         }
-                    },
-                    label = { Text("Ange ort") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

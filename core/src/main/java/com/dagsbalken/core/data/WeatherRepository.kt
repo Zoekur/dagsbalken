@@ -80,6 +80,14 @@ object ClothingAdvice {
 
 // --- Repository (Logiken för att läsa/skriva data) ---
 class WeatherRepository(private val context: Context) {
+    data class LocationSuggestion(
+        val name: String,
+        val country: String?,
+        val latitude: Double,
+        val longitude: Double
+    ) {
+        fun displayName(): String = if (!country.isNullOrBlank()) "$name, $country" else name
+    }
     private val dataStore = context.dataStore
     private val httpClient: OkHttpClient by lazy { createHttpClient() }
 
@@ -297,6 +305,46 @@ class WeatherRepository(private val context: Context) {
         dataStore.edit { prefs ->
             prefs[WeatherPreferencesKeys.PROVIDER] = providerName
         }
+    }
+
+    // Spara en manuellt vald plats i cachen så att fetchAndSaveWeatherOnce hittar den direkt
+    fun cacheManualLocation(name: String, lat: Double, lon: Double) {
+        putForwardCache(name, ForwardEntry(lat, lon, name, System.currentTimeMillis()))
+    }
+
+    // Sök efter platser via Open-Meteo Geocoding API
+    suspend fun searchLocations(query: String): List<LocationSuggestion> {
+        if (query.length < 2) return emptyList()
+        val suggestions = mutableListOf<LocationSuggestion>()
+        try {
+            val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query, "UTF-8")}&count=5&language=sv&format=json"
+            val req = Request.Builder().url(url).get().build()
+            val resp = httpClient.newCall(req).awaitResponse()
+            resp.use { r ->
+                if (r.isSuccessful) {
+                    val body = r.body?.string()
+                    if (!body.isNullOrBlank()) {
+                        val json = JSONObject(body)
+                        val results = json.optJSONArray("results")
+                        if (results != null) {
+                            for (i in 0 until results.length()) {
+                                val item = results.getJSONObject(i)
+                                val name = item.optString("name")
+                                val country = item.optString("country", "")
+                                val lat = item.optDouble("latitude")
+                                val lon = item.optDouble("longitude")
+                                if (name.isNotBlank() && !lat.isNaN() && !lon.isNaN()) {
+                                    suggestions.add(LocationSuggestion(name, country, lat, lon))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return suggestions
     }
 
     // Public helper to trigger an immediate fetch & save based on current settings.
