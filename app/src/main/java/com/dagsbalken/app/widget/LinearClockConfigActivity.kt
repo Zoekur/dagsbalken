@@ -17,16 +17,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -65,12 +72,71 @@ class LinearClockConfigActivity : ComponentActivity() {
 
             DagsbalkenTheme(themeOption = themeOption) {
                 Surface(Modifier.fillMaxSize()) {
-                    Column(Modifier.padding(16.dp)) {
+                    Column(
+                        Modifier
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
                         Text("Widget-inställningar", style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(16.dp))
 
+                        // COMPONENTS VISIBILITY
+                        Text("Visa komponenter", style = MaterialTheme.typography.titleMedium)
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = config.showClock, onCheckedChange = { config = config.copy(showClock = it) })
+                            Text("Klocka (Tidslinje)")
+                        }
+
+                        if (config.showClock) {
+                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp)) {
+                                Checkbox(checked = config.showEvents, onCheckedChange = { config = config.copy(showEvents = it) })
+                                Text("Kalenderhändelser")
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = config.showWeather, onCheckedChange = { config = config.copy(showWeather = it) })
+                            Text("Väder")
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = config.showClothing, onCheckedChange = { config = config.copy(showClothing = it) })
+                            Text("Klädsel")
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // CLOCK SIZE
+                        if (config.showClock) {
+                            Text("Klockstorlek", style = MaterialTheme.typography.titleMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = config.clockSize == LinearClockPrefs.SIZE_4x1,
+                                    onClick = { config = config.copy(clockSize = LinearClockPrefs.SIZE_4x1) }
+                                )
+                                Text("4x1 (Standard)")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = config.clockSize == LinearClockPrefs.SIZE_4x2,
+                                    onClick = { config = config.copy(clockSize = LinearClockPrefs.SIZE_4x2) }
+                                )
+                                Text("4x2 (Hög)")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = config.clockSize == LinearClockPrefs.SIZE_2x1,
+                                    onClick = { config = config.copy(clockSize = LinearClockPrefs.SIZE_2x1) }
+                                )
+                                Text("2x1 (Kompakt)")
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
                         // FÄRGVÄLJARE (Exempel)
-                        Text("Bakgrundsfärg")
+                        Text("Bakgrundsfärg", style = MaterialTheme.typography.titleMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(0xFFFFFFFF.toInt(), 0xFF111827.toInt()).forEach { c ->
                                 Box(
@@ -102,6 +168,12 @@ class LinearClockConfigActivity : ComponentActivity() {
                                                 this[LinearClockPrefs.COLOR_TEXT] = config.textColor
                                                 this[LinearClockPrefs.COLOR_ACCENT] = config.accentColor
                                                 this[LinearClockPrefs.HOURS_TO_SHOW] = config.hoursToShow
+
+                                                this[LinearClockPrefs.SHOW_CLOCK] = config.showClock
+                                                this[LinearClockPrefs.SHOW_EVENTS] = config.showEvents
+                                                this[LinearClockPrefs.SHOW_WEATHER] = config.showWeather
+                                                this[LinearClockPrefs.SHOW_CLOTHING] = config.showClothing
+                                                this[LinearClockPrefs.CLOCK_SIZE] = config.clockSize
                                             }
                                         }
                                         LinearClockWidget.update(context, id)
