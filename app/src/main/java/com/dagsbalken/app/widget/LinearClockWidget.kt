@@ -63,7 +63,12 @@ object LinearClockWidget : GlanceAppWidget() {
                 backgroundColor = prefs[LinearClockPrefs.COLOR_BG] ?: LinearClockPrefs.DEF_BG,
                 textColor = prefs[LinearClockPrefs.COLOR_TEXT] ?: LinearClockPrefs.DEF_TEXT,
                 accentColor = prefs[LinearClockPrefs.COLOR_ACCENT] ?: LinearClockPrefs.DEF_ACCENT,
-                hoursToShow = prefs[LinearClockPrefs.HOURS_TO_SHOW] ?: LinearClockPrefs.DEF_HOURS_TO_SHOW
+                hoursToShow = prefs[LinearClockPrefs.HOURS_TO_SHOW] ?: LinearClockPrefs.DEF_HOURS_TO_SHOW,
+                showClock = prefs[LinearClockPrefs.SHOW_CLOCK] ?: LinearClockPrefs.DEF_SHOW_CLOCK,
+                showEvents = prefs[LinearClockPrefs.SHOW_EVENTS] ?: LinearClockPrefs.DEF_SHOW_EVENTS,
+                showWeather = prefs[LinearClockPrefs.SHOW_WEATHER] ?: LinearClockPrefs.DEF_SHOW_WEATHER,
+                showClothing = prefs[LinearClockPrefs.SHOW_CLOTHING] ?: LinearClockPrefs.DEF_SHOW_CLOTHING,
+                clockSize = prefs[LinearClockPrefs.CLOCK_SIZE] ?: LinearClockPrefs.DEF_CLOCK_SIZE
             )
 
             LinearClockWidgetContent(weatherData, events, config)
@@ -80,10 +85,17 @@ private fun LinearClockWidgetContent(
     val context = LocalContext.current
     val size = LocalSize.current
 
-    // Enkel logik för px-beräkning (kan behöva justeras för exakt precision)
+    // Enkel logik för px-beräkning
     val density = context.resources.displayMetrics.density
     val widthPx = (size.width.value * density).toInt().coerceAtLeast(300)
-    val heightPx = (80 * density).toInt().coerceAtLeast(100)
+
+    // Determine height based on config
+    val clockHeightDp = when(config.clockSize) {
+        LinearClockPrefs.SIZE_4x2 -> 160.dp
+        else -> 80.dp // 4x1 and 2x1
+    }
+
+    val heightPx = (clockHeightDp.value * density).toInt().coerceAtLeast(100)
 
     Column(
         GlanceModifier
@@ -92,68 +104,126 @@ private fun LinearClockWidgetContent(
     ) {
 
         // 1. TOP SECTION: Klockan
-        Box(
-            GlanceModifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .padding(2.dp)
-        ) {
-            // OBS: Se till att LinearClockBitmapGenerator finns!
-            val bitmap = LinearClockBitmapGenerator.generate(
-                context = context,
-                width = widthPx,
-                height = heightPx,
-                events = events,
-                config = config,
-                currentTime = LocalTime.now()
-            )
-
-            Image(
-                provider = ImageProvider(bitmap),
-                contentDescription = "Linear Clock",
-                modifier = GlanceModifier.fillMaxSize()
-            )
-        }
-
-        Spacer(GlanceModifier.height(8.dp))
-
-        // 2. BOTTOM SECTION
-        Row(GlanceModifier.fillMaxWidth().height(120.dp)) {
-
-            // Single Weather Box focusing on Temperature and Visual Condition (Icon)
-            // Removed detailed advice text as per user request ("Weather card should only show precipitation/sun visually. Temperature is central.")
+        if (config.showClock) {
             Box(
                 GlanceModifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
-                    .cornerRadius(16.dp)
+                    .height(clockHeightDp)
                     .padding(2.dp)
             ) {
-                Row(
-                    GlanceModifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (weatherData != null && weatherData.isDataLoaded) {
-                        // Central Temperature - Larger
-                        Text(
-                            text = "${weatherData.temperatureCelsius}°",
-                            style = TextStyle(fontSize = TextUnit(48.dp.value, TextUnitType.Sp), fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(GlanceModifier.width(24.dp))
-                        // Visual Icon (Sun/Rain/Clothing icon which acts as visual summary)
-                        // If we want ONLY sun/rain, we might need to parse `adviceIcon` or `precipChance`.
-                        // But `adviceIcon` already contains emojis like ☁️, ☔️🌧️, ☀️ based on logic in Repository.
-                        Text(
-                            text = weatherData.adviceIcon,
-                            style = TextStyle(fontSize = TextUnit(32.dp.value, TextUnitType.Sp))
-                        )
-                    } else {
-                        Text("Laddar...", style = TextStyle(fontSize = TextUnit(16.dp.value, TextUnitType.Sp)))
-                    }
+                // Generate bitmap with correct events visibility
+                // If showEvents is false, we pass empty list OR handle it in generator
+                // Passing empty list is easiest if we want to hide them.
+                val eventsToShow = if (config.showEvents) events else emptyList()
+
+                val bitmap = LinearClockBitmapGenerator.generate(
+                    context = context,
+                    width = widthPx,
+                    height = heightPx,
+                    events = eventsToShow,
+                    config = config,
+                    currentTime = LocalTime.now()
+                )
+
+                Image(
+                    provider = ImageProvider(bitmap),
+                    contentDescription = "Linear Clock",
+                    modifier = GlanceModifier.fillMaxSize()
+                )
+            }
+            Spacer(GlanceModifier.height(8.dp))
+        }
+
+        // 2. BOTTOM SECTION (Weather / Clothing)
+        if (config.showWeather || config.showClothing) {
+            Row(GlanceModifier.fillMaxWidth().height(120.dp)) {
+
+                // Determine if we show both
+                val showBoth = config.showWeather && config.showClothing
+                val modifier = if (showBoth) GlanceModifier.defaultWeight() else GlanceModifier.fillMaxWidth()
+
+                if (config.showWeather) {
+                    WeatherCard(
+                        weatherData = weatherData,
+                        modifier = modifier,
+                        showClothingIcon = false // Standard weather view
+                    )
                 }
+
+                if (showBoth) {
+                    Spacer(GlanceModifier.width(8.dp))
+                }
+
+                if (config.showClothing) {
+                    // Clothing card presented as in main app (but limited for widget).
+                    // Main app clothing card usually implies advice.
+                    // Here we can use the adviceIcon or text if available, but memory says "text descriptions excluded".
+                    // However, for "Clothing Card", maybe icon is the key.
+                    // If we show "Weather" and "Clothing" separate, maybe Weather shows Sun/Cloud, Clothing shows Jacket/Umbrella?
+                    // Currently adviceIcon mixes them.
+                    // We will use the same card style but maybe focus on the icon?
+                    WeatherCard(
+                        weatherData = weatherData,
+                        modifier = modifier,
+                        showClothingIcon = true,
+                        title = "Klädsel"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeatherCard(
+    weatherData: WeatherData?,
+    modifier: GlanceModifier,
+    showClothingIcon: Boolean,
+    title: String? = null
+) {
+    Box(
+        modifier
+            .fillMaxHeight()
+            .cornerRadius(16.dp)
+            .padding(2.dp)
+            //.background(Color.White) // Glance doesn't support background color directly on Box like this easily without drawable usually, but ImageProvider or built-in style.
+            // Assuming the container app handles theming or we use a drawable if needed.
+            // For now rely on transparent/default look or add background image.
+    ) {
+        Row(
+            GlanceModifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (weatherData != null && weatherData.isDataLoaded) {
+                if (title != null) {
+                    // Optional title if space permits, but usually widget is minimal.
+                    // Text(title, style = TextStyle(fontWeight = FontWeight.Bold))
+                    // Spacer(GlanceModifier.width(8.dp))
+                }
+
+                if (!showClothingIcon) {
+                     // Standard Weather: Temp + Condition Icon (if available separately, else adviceIcon)
+                     // Using adviceIcon as placeholder for condition if real condition icon isn't separate.
+                     Text(
+                        text = "${weatherData.temperatureCelsius}°",
+                        style = TextStyle(fontSize = TextUnit(48.dp.value, TextUnitType.Sp), fontWeight = FontWeight.Bold)
+                    )
+                    Spacer(GlanceModifier.width(24.dp))
+                }
+
+                // Icon
+                // If showClothingIcon is true, we ideally want the clothing advice icon.
+                // If false (Weather), we want weather condition (Sun/Cloud).
+                // The current Repository seems to provide `adviceIcon` which might be the only visual we have.
+                Text(
+                    text = weatherData.adviceIcon,
+                    style = TextStyle(fontSize = TextUnit(32.dp.value, TextUnitType.Sp))
+                )
+            } else {
+                Text("Laddar...", style = TextStyle(fontSize = TextUnit(16.dp.value, TextUnitType.Sp)))
             }
         }
     }

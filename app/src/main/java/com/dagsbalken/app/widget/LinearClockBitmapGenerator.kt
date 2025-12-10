@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
 
@@ -28,9 +29,6 @@ object LinearClockBitmapGenerator {
         val colorRedLine = config.accentColor
         val colorBorder = config.textColor
 
-        // Use a semi-transparent version of accent color for events, or their own color
-        // But for consistency with main app, we can use the event's color.
-
         // Paint setup
         val paint = Paint().apply {
             isAntiAlias = true
@@ -40,17 +38,16 @@ object LinearClockBitmapGenerator {
         paint.color = colorFuture
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
 
+        // Adjust scale/density based on size mode
+        val densityMultiplier = when (config.clockSize) {
+            LinearClockPrefs.SIZE_4x2 -> 2.0f // Double height, scale up slightly
+            LinearClockPrefs.SIZE_2x1 -> 0.8f // Compact width, scale down slightly? Or just fit.
+            else -> 1.0f
+        }
+        // Actually, height is passed in. If 4x2 is selected, height is ~160dp.
+        // We might want larger text/ticks for 4x2.
+
         // Time Window Logic
-        // The widget shows configurable hours (default 24) or "zoom"?
-        // The original code had hardcoded zoom.
-        // If config.hoursToShow is small (e.g. 4), we use zoom logic. If it is 24, we show whole day?
-        // Let's assume the user setting "Hours to show" means total visible window.
-        // But the previous implementation hardcoded 2h zoom (4h window).
-
-        // Let's interpret hoursToShow as the total window size.
-        // If hoursToShow is 24, we show the whole day 00-24.
-        // If it's less, we center around 'now'.
-
         val totalWindowHours = config.hoursToShow.coerceIn(4, 24)
         val windowDurationMinutes = totalWindowHours * 60
         val minutesPerPixel = windowDurationMinutes.toFloat() / width
@@ -68,45 +65,43 @@ object LinearClockBitmapGenerator {
         }
         val windowEndMinute = windowStartMinute + windowDurationMinutes
 
-        // 2. Draw Passed Time (Gray overlay or just implicit?)
-        // In the original, passed time was green.
-        // Let's draw a "passed" rect up to current time.
-
+        // 2. Draw Passed Time (Gray overlay)
         val currentX = (currentMinuteOfDay - windowStartMinute) / minutesPerPixel
         if (currentX > 0) {
              paint.color = colorPassed
-             // Clamp to visible area
              val passedWidth = currentX.coerceAtMost(width.toFloat())
              canvas.drawRect(0f, 0f, passedWidth, height.toFloat(), paint)
         }
 
         // 3. Draw Events
+        // Events are filtered in Widget before calling this if showEvents is false.
         events.forEach { event ->
             val startMin = event.start.hour * 60 + event.start.minute
             val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
-            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60 // Min 1h width if unknown
+            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
 
             val eventStartPx = (startMin - windowStartMinute) / minutesPerPixel
             val eventWidthPx = (actualEndMin - startMin) / minutesPerPixel
 
             if (eventStartPx + eventWidthPx > 0 && eventStartPx < width) {
                 paint.color = event.color
-                paint.alpha = 100 // Semi-transparent
+                paint.alpha = 150 // Slightly transparent
 
                 val left = eventStartPx.coerceAtLeast(0f)
                 val right = (eventStartPx + eventWidthPx).coerceAtMost(width.toFloat())
 
-                // Draw a bar in the middle height
+                // Draw bar. Adjust height based on available height.
+                // Leave 20% top/bottom padding
                 canvas.drawRect(left, height * 0.2f, right, height * 0.8f, paint)
 
-                paint.alpha = 255 // Reset
+                paint.alpha = 255
             }
         }
 
         // 4. Draw Hour Ticks and Text
         paint.color = colorBorder
-        paint.strokeWidth = 2f
-        paint.textSize = 24f * config.scale // Scale font
+        paint.strokeWidth = 2f * if(densityMultiplier > 1.5) 1.5f else 1f
+        paint.textSize = 24f * config.scale * densityMultiplier
         paint.typeface = Typeface.create(config.font, Typeface.BOLD)
         paint.textAlign = Paint.Align.CENTER
 
@@ -120,21 +115,26 @@ object LinearClockBitmapGenerator {
 
             if (x >= 0 && x <= width) {
                 // Draw Tick
-                canvas.drawLine(x, 0f, x, height * 0.3f, paint)
+                // Longer tick for 4x2?
+                val tickHeight = height * 0.3f
+                canvas.drawLine(x, 0f, x, tickHeight, paint)
 
                 // Draw Text
-                val hourText = "${'$'}{(h % 24 + 24) % 24}"
-                canvas.drawText(hourText, x, height * 0.6f + 12f * config.scale, paint)
+                val hourText = "${(h % 24 + 24) % 24}"
+                val textY = if (config.clockSize == LinearClockPrefs.SIZE_4x2) {
+                     height * 0.5f + (12f * config.scale * densityMultiplier) // Center text in 4x2
+                } else {
+                     height * 0.6f + (12f * config.scale * densityMultiplier)
+                }
+
+                canvas.drawText(hourText, x, textY, paint)
             }
         }
 
         // 5. Draw Red Line (Current Time)
-        // If window is 24h, red line moves. If zoomed, red line is center (unless we hit edges of day?)
-        // With the logic above, currentX is calculated correctly for both.
-
         if (currentX >= 0 && currentX <= width) {
             paint.color = colorRedLine
-            paint.strokeWidth = 4f
+            paint.strokeWidth = 4f * if(densityMultiplier > 1.5) 1.5f else 1f
             canvas.drawLine(currentX, 0f, currentX, height.toFloat(), paint)
         }
 
