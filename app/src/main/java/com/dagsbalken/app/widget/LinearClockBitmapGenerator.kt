@@ -6,26 +6,30 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
 
 object LinearClockBitmapGenerator {
 
-    @Suppress("UNUSED_PARAMETER")
     fun generate(
         context: Context,
         width: Int,
         height: Int,
         events: List<DayEvent>,
+        config: WidgetConfig,
         currentTime: LocalTime = LocalTime.now()
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // Colors
-        val colorFuture = 0xFFFFFFFF.toInt() // White
-        val colorPassed = 0xFFB7EA27.toInt() // Green
-        val colorRedLine = 0xFFEF4444.toInt() // Red
-        val colorBorder = 0xFF000000.toInt() // Black
+        // Colors from config
+        val colorFuture = config.backgroundColor
+        val colorPassed = 0xFFE5E7EB.toInt() // Light gray for passed
+        val colorRedLine = config.accentColor
+        val colorBorder = config.textColor
+
+        // Use a semi-transparent version of accent color for events, or their own color
+        // But for consistency with main app, we can use the event's color.
 
         // Paint setup
         val paint = Paint().apply {
@@ -36,30 +40,77 @@ object LinearClockBitmapGenerator {
         paint.color = colorFuture
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
 
-        // 2. Draw Passed Time (Green - Left Side)
-        paint.color = colorPassed
-        canvas.drawRect(0f, 0f, width / 2f, height.toFloat(), paint)
-
         // Time Window Logic
-        // The widget shows 2 hours before and 2 hours after 'now'
-        val zoomHours = 2
-        val windowDurationMinutes = zoomHours * 2 * 60 // 240 minutes
+        // The widget shows configurable hours (default 24) or "zoom"?
+        // The original code had hardcoded zoom.
+        // If config.hoursToShow is small (e.g. 4), we use zoom logic. If it is 24, we show whole day?
+        // Let's assume the user setting "Hours to show" means total visible window.
+        // But the previous implementation hardcoded 2h zoom (4h window).
+
+        // Let's interpret hoursToShow as the total window size.
+        // If hoursToShow is 24, we show the whole day 00-24.
+        // If it's less, we center around 'now'.
+
+        val totalWindowHours = config.hoursToShow.coerceIn(4, 24)
+        val windowDurationMinutes = totalWindowHours * 60
         val minutesPerPixel = windowDurationMinutes.toFloat() / width
 
-        // Window Range (in minutes from start of day)
         val currentMinuteOfDay = currentTime.hour * 60 + currentTime.minute
-        val windowStartMinute = currentMinuteOfDay - (windowDurationMinutes / 2)
+
+        val windowStartMinute: Int
+
+        if (totalWindowHours == 24) {
+             // Fixed 00:00 to 24:00
+             windowStartMinute = 0
+        } else {
+             // Centered around now
+             windowStartMinute = currentMinuteOfDay - (windowDurationMinutes / 2)
+        }
         val windowEndMinute = windowStartMinute + windowDurationMinutes
+
+        // 2. Draw Passed Time (Gray overlay or just implicit?)
+        // In the original, passed time was green.
+        // Let's draw a "passed" rect up to current time.
+
+        val currentX = (currentMinuteOfDay - windowStartMinute) / minutesPerPixel
+        if (currentX > 0) {
+             paint.color = colorPassed
+             // Clamp to visible area
+             val passedWidth = currentX.coerceAtMost(width.toFloat())
+             canvas.drawRect(0f, 0f, passedWidth, height.toFloat(), paint)
+        }
+
+        // 3. Draw Events
+        events.forEach { event ->
+            val startMin = event.start.hour * 60 + event.start.minute
+            val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
+            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60 // Min 1h width if unknown
+
+            val eventStartPx = (startMin - windowStartMinute) / minutesPerPixel
+            val eventWidthPx = (actualEndMin - startMin) / minutesPerPixel
+
+            if (eventStartPx + eventWidthPx > 0 && eventStartPx < width) {
+                paint.color = event.color
+                paint.alpha = 100 // Semi-transparent
+
+                val left = eventStartPx.coerceAtLeast(0f)
+                val right = (eventStartPx + eventWidthPx).coerceAtMost(width.toFloat())
+
+                // Draw a bar in the middle height
+                canvas.drawRect(left, height * 0.2f, right, height * 0.8f, paint)
+
+                paint.alpha = 255 // Reset
+            }
+        }
 
         // 4. Draw Hour Ticks and Text
         paint.color = colorBorder
         paint.strokeWidth = 2f
-        paint.textSize = 24f // Fixed size for widget text
-        paint.typeface = Typeface.DEFAULT_BOLD
+        paint.textSize = 24f * config.scale // Scale font
+        paint.typeface = Typeface.create(config.font, Typeface.BOLD)
         paint.textAlign = Paint.Align.CENTER
 
         // Find first visible hour
-        // windowStartMinute might be negative (e.g. 23:00 yesterday), so we floor div correctly
         val firstHour = (windowStartMinute / 60) - 1
         val lastHour = (windowEndMinute / 60) + 1
 
@@ -72,16 +123,20 @@ object LinearClockBitmapGenerator {
                 canvas.drawLine(x, 0f, x, height * 0.3f, paint)
 
                 // Draw Text
-                // Normalize negative hours or hours > 24 to 0-23 range
                 val hourText = "${'$'}{(h % 24 + 24) % 24}"
-                canvas.drawText(hourText, x, height * 0.6f + 12f, paint)
+                canvas.drawText(hourText, x, height * 0.6f + 12f * config.scale, paint)
             }
         }
 
-        // 5. Draw Red Line (Current Time - Center)
-        paint.color = colorRedLine
-        paint.strokeWidth = 4f
-        canvas.drawLine(width / 2f, 0f, width / 2f, height.toFloat(), paint)
+        // 5. Draw Red Line (Current Time)
+        // If window is 24h, red line moves. If zoomed, red line is center (unless we hit edges of day?)
+        // With the logic above, currentX is calculated correctly for both.
+
+        if (currentX >= 0 && currentX <= width) {
+            paint.color = colorRedLine
+            paint.strokeWidth = 4f
+            canvas.drawLine(currentX, 0f, currentX, height.toFloat(), paint)
+        }
 
         // 6. Border
         paint.color = colorBorder
