@@ -1,10 +1,12 @@
 package com.dagsbalken.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
+import android.provider.CalendarContract
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,6 +30,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -302,7 +306,15 @@ fun LinearClockScreen(
         Spacer(Modifier.height(16.dp))
 
         // 2. Nästa Händelse (Tilläggsinformation)
-        NextEventCard(events = events, now = now.toLocalTime())
+        NextEventCard(
+            events = events,
+            now = now.toLocalTime(),
+            onAddEventClick = {
+                val intent = Intent(Intent.ACTION_INSERT)
+                    .setData(CalendarContract.Events.CONTENT_URI)
+                context.startActivity(intent)
+            }
+        )
 
         Spacer(Modifier.height(24.dp))
 
@@ -516,32 +528,57 @@ fun LinearDayCard(
 
 // -------- NÄSTA HÄNDELSE --------
 @Composable
-fun NextEventCard(events: List<DayEvent>, now: LocalTime) {
+fun NextEventCard(events: List<DayEvent>, now: LocalTime, onAddEventClick: () -> Unit) {
     val sortedEvents = remember(events) { events.sortedBy { it.start } }
     val next = remember(sortedEvents, now) {
         // Hitta nästa händelse som inte har passerat (minus 1 minut för att hantera tickern)
         sortedEvents.firstOrNull { !it.start.isBefore(now.minusMinutes(1)) }
-    } ?: return
+    }
 
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFF7F7F7), RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(next.icon ?: "•", fontSize = 22.sp, modifier = Modifier.padding(end = 8.dp))
-        Column {
-            Text(next.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+    if (next == null) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(
-                text = "${next.start.format(DateTimeFormatter.ofPattern("HH:mm"))}${
-                    next.end?.let {
-                        " – ${it.format(DateTimeFormatter.ofPattern("HH:mm"))}"
-                    } ?: ""
-                }",
-                color = Color(0xFF6B7280),
-                fontSize = 14.sp
+                "Inget planerat",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            IconButton(onClick = onAddEventClick) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Lägg till event",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    } else {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(next.icon ?: "•", fontSize = 22.sp, modifier = Modifier.padding(end = 8.dp))
+            Column {
+                Text(next.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = "${next.start.format(DateTimeFormatter.ofPattern("HH:mm"))}${
+                        next.end?.let {
+                            " – ${it.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+                        } ?: ""
+                    }",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }
