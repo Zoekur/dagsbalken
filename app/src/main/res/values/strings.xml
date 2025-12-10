@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">Dagsbalken</string>
-    <string name="widget_name">Dagsbalken</string>
+    <string name="widget_name">Dagsbalken: Klocka</string>
     <string name="widget_description">Visar en linjär klocka över dagen och kommande händelser.</string>
+    <string name="widget_weather_name">Dagsbalken: Väder</string>
+    <string name="widget_weather_description">Visar aktuell temperatur och väderlek.</string>
+    <string name="widget_clothing_name">Dagsbalken: Klädsel</string>
+    <string name="widget_clothing_description">Visar rekommenderad klädsel baserat på vädret.</string>
 </resources>
