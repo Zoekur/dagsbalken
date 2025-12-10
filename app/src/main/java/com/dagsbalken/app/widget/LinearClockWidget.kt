@@ -120,62 +120,38 @@ private fun LinearClockWidgetContent(
         // 2. BOTTOM SECTION
         Row(GlanceModifier.fillMaxWidth().height(120.dp)) {
 
-            // 2.1 Weather Box
+            // Single Weather Box focusing on Temperature and Visual Condition (Icon)
+            // Removed detailed advice text as per user request ("Weather card should only show precipitation/sun visually. Temperature is central.")
             Box(
                 GlanceModifier
-                    .defaultWeight() // RÄTTAT: Inga argument här!
+                    .fillMaxWidth()
                     .fillMaxHeight()
                     .cornerRadius(16.dp)
                     .padding(2.dp)
             ) {
-                Column(
+                Row(
                     GlanceModifier
                         .fillMaxSize()
-                        .padding(2.dp)
-                        .padding(8.dp),
-                    horizontalAlignment = Alignment.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (weatherData != null && weatherData.isDataLoaded) {
-                        Text(
-                            text = "${'$'}{weatherData.temperatureCelsius}°C",
-                            style = TextStyle(fontSize = TextUnit(24.dp.value, TextUnitType.Sp), fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(GlanceModifier.height(4.dp))
-                        Text(
-                            text = weatherData.adviceText,
-                            style = TextStyle(fontSize = TextUnit(12.dp.value, TextUnitType.Sp)),
-                            maxLines = 4
-                        )
-                    } else {
-                        Text("Laddar...")
-                    }
-                }
-            }
-
-            Spacer(GlanceModifier.width(8.dp))
-
-            // 2.2 Clothing Box
-            Box(
-                GlanceModifier
-                    .defaultWeight()
-                    .fillMaxHeight()
-                    .cornerRadius(16.dp)
-                    .padding(2.dp)
-            ) {
-                Column(
-                    GlanceModifier
-                        .fillMaxSize()
-                        .padding(2.dp)
-                        .padding(8.dp),
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (weatherData != null && weatherData.isDataLoaded) {
-                        // Show simple emoji/icon instead of unresolved image resource
-                        Text(text = weatherData.adviceIcon)
+                        // Central Temperature - Larger
+                        Text(
+                            text = "${weatherData.temperatureCelsius}°",
+                            style = TextStyle(fontSize = TextUnit(48.dp.value, TextUnitType.Sp), fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(GlanceModifier.width(24.dp))
+                        // Visual Icon (Sun/Rain/Clothing icon which acts as visual summary)
+                        // If we want ONLY sun/rain, we might need to parse `adviceIcon` or `precipChance`.
+                        // But `adviceIcon` already contains emojis like ☁️, ☔️🌧️, ☀️ based on logic in Repository.
+                        Text(
+                            text = weatherData.adviceIcon,
+                            style = TextStyle(fontSize = TextUnit(32.dp.value, TextUnitType.Sp))
+                        )
                     } else {
-                        Text("...")
+                        Text("Laddar...", style = TextStyle(fontSize = TextUnit(16.dp.value, TextUnitType.Sp)))
                     }
                 }
             }
