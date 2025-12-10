@@ -33,6 +33,30 @@
                 android:resource="@xml/linear_clock_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.WeatherWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_weather_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ClothingWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_clothing_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/clothing_widget_info" />
+        </receiver>
+
         <activity
             android:name=".widget.LinearClockConfigActivity"
             android:exported="true"
