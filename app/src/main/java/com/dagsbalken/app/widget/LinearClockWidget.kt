@@ -31,10 +31,13 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
+import androidx.glance.currentState
 import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.data.WeatherData
+import com.dagsbalken.core.widget.LinearClockPrefs
+import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
 
 import com.dagsbalken.app.widget.LinearClockBitmapGenerator
@@ -52,7 +55,18 @@ object LinearClockWidget : GlanceAppWidget() {
 
         provideContent {
             val weatherData by weatherRepo.weatherDataFlow.collectAsState(initial = null)
-            LinearClockWidgetContent(weatherData, events)
+            val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
+
+            val config = WidgetConfig(
+                font = prefs[LinearClockPrefs.FONT_FAMILY] ?: LinearClockPrefs.DEF_FONT,
+                scale = prefs[LinearClockPrefs.FONT_SCALE] ?: LinearClockPrefs.DEF_SCALE,
+                backgroundColor = prefs[LinearClockPrefs.COLOR_BG] ?: LinearClockPrefs.DEF_BG,
+                textColor = prefs[LinearClockPrefs.COLOR_TEXT] ?: LinearClockPrefs.DEF_TEXT,
+                accentColor = prefs[LinearClockPrefs.COLOR_ACCENT] ?: LinearClockPrefs.DEF_ACCENT,
+                hoursToShow = prefs[LinearClockPrefs.HOURS_TO_SHOW] ?: LinearClockPrefs.DEF_HOURS_TO_SHOW
+            )
+
+            LinearClockWidgetContent(weatherData, events, config)
         }
     }
 }
@@ -60,7 +74,8 @@ object LinearClockWidget : GlanceAppWidget() {
 @Composable
 private fun LinearClockWidgetContent(
     weatherData: WeatherData?,
-    events: List<DayEvent>
+    events: List<DayEvent>,
+    config: WidgetConfig
 ) {
     val context = LocalContext.current
     val size = LocalSize.current
@@ -89,6 +104,7 @@ private fun LinearClockWidgetContent(
                 width = widthPx,
                 height = heightPx,
                 events = events,
+                config = config,
                 currentTime = LocalTime.now()
             )
 
