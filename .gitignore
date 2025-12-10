@@ -30,3 +30,4 @@ proguard/
 # OS-specific files
 .DS_Store
 **/thumbs.db
+android-sdk/
