@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -79,7 +81,6 @@ import com.dagsbalken.app.ui.settings.SettingsScreen
 import com.dagsbalken.app.ui.settings.ThemePreferences
 import com.dagsbalken.app.ui.theme.DagsbalkenTheme
 import com.dagsbalken.app.ui.theme.ThemeOption
-import com.dagsbalken.app.ui.theme.ThemeSelector
 import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.data.WeatherData
@@ -121,7 +122,7 @@ class MainActivity : ComponentActivity() {
         WeatherWorker.schedule(applicationContext)
 
         setContent {
-            val themeOption by viewModel.themeOptionFlow.collectAsState(initial = ThemeOption.NordicCalm)
+            val themeOption by viewModel.themeOptionFlow.collectAsState(initial = ThemeOption.Cold)
 
             DagsbalkenTheme(themeOption = themeOption) {
                 // Flytta bakgrundsfärgen hit så vi inte får en separat "rand" i toppen
@@ -144,9 +145,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("settings") {
-                            SettingsScreen(onBack = {
-                                navController.popBackStack()
-                            })
+                            SettingsScreen(
+                                currentTheme = themeOption,
+                                onThemeSelected = { viewModel.onThemeOptionChange(it) },
+                                onBack = {
+                                    navController.popBackStack()
+                                }
+                            )
                         }
                     }
                 }
@@ -271,7 +276,8 @@ fun LinearClockScreen(
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
-                events = events
+                events = events,
+                themeOption = themeOption
             )
 
             Spacer(Modifier.height(16.dp))
@@ -323,15 +329,20 @@ fun LinearClockScreen(
         }
 
         // Settings Icon (Floating TopEnd)
-        IconButton(
-            onClick = onSettingsClick,
-            modifier = Modifier.align(Alignment.TopEnd)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
         ) {
-            Icon(
-                imageVector = DagsbalkenIcons.Settings,
-                contentDescription = "Settings",
-                tint = MaterialTheme.colorScheme.onSurface
-            )
+            IconButton(
+                onClick = onSettingsClick
+            ) {
+                Icon(
+                    imageVector = DagsbalkenIcons.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }
@@ -344,7 +355,8 @@ fun LinearClockScreen(
 fun LinearDayCard(
     now: LocalTime,
     height: Dp = 160.dp,
-    events: List<DayEvent> = emptyList()
+    events: List<DayEvent> = emptyList(),
+    themeOption: ThemeOption
 ) {
     val hourLabelPaint = remember {
         Paint().apply {
@@ -364,7 +376,6 @@ fun LinearDayCard(
     val trackBgColor = MaterialTheme.colorScheme.surfaceVariant
     val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    val passedColor = Color(0xFFB7EA27)
     val nowColor = Color(0xFFEF4444)
 
     Box(
@@ -396,6 +407,15 @@ fun LinearDayCard(
             val trackWidth = right - pad
             val left = pad
             val cornerRadiusPx = 24f
+
+            // Define the gradient brush covering the FULL track width
+            val gradientBrush = Brush.horizontalGradient(
+                0.0f to themeOption.timelineNightColor,
+                0.5f to themeOption.timelineDayColor,
+                1.0f to themeOption.timelineNightColor,
+                startX = left,
+                endX = right
+            )
 
             // Inre kapsel (Bakgrund)
             drawRoundRect(
@@ -432,11 +452,12 @@ fun LinearDayCard(
             val currentMinutes = now.hour * 60 + now.minute
             val currentX = left + (currentMinutes * pxPerMin)
 
-            // Grön fyllnad (Från 00:00 till nu)
+            // Gradient fill (Från 00:00 till nu)
             val passedWidth = currentX - left
             if (passedWidth > 0) {
+                 // Use gradient brush
                  drawRoundRect(
-                    color = passedColor,
+                    brush = gradientBrush,
                     topLeft = Offset(left, trackTop),
                     size = Size(passedWidth, trackHeight),
                     cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
@@ -447,7 +468,7 @@ fun LinearDayCard(
                  if (passedWidth > cornerRadiusPx) {
                      // Fyll ut högra hörnen så det ser ut som progress bar som fortsätter
                      drawRect(
-                         color = passedColor,
+                         brush = gradientBrush, // Use same brush to blend seamlessly
                          topLeft = Offset(currentX - 10f, trackTop), // Lite överlapp
                          size = Size(10f, trackHeight)
                      )
