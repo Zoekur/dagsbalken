@@ -267,7 +267,7 @@ fun LinearClockScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 1. Tidslinjen direkt högst upp (ingen extra bar ovanför)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(24.dp))
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
