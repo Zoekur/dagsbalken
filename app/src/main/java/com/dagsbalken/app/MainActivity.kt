@@ -256,97 +256,89 @@ fun LinearClockScreen(
 
     val now by rememberTicker1s()
 
-    Column(
+    Box(
         Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // TOP HEADER: Title (Left) + Settings (Right)
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Dagsbalken",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
+            // Theme Selector
+            ThemeSelector(
+                selectedOption = themeOption,
+                onOptionSelected = onThemeOptionChange,
             )
 
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = DagsbalkenIcons.Settings,
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
+            Spacer(Modifier.height(24.dp))
 
-        Spacer(Modifier.height(8.dp))
+            // 1. Tidslinjen (Huvudkomponenten) - Nu med dubbel höjd och hela dygnet
+            LinearDayCard(
+                now = now.toLocalTime(),
+                height = 168.dp,
+                events = events
+            )
 
-        // Theme Selector
-        ThemeSelector(
-            selectedOption = themeOption,
-            onOptionSelected = onThemeOptionChange,
-        )
+            Spacer(Modifier.height(16.dp))
 
-        Spacer(Modifier.height(24.dp))
-
-        // 1. Tidslinjen (Huvudkomponenten) - Nu med dubbel höjd och hela dygnet
-        LinearDayCard(
-            now = now.toLocalTime(),
-            height = 168.dp,
-            events = events
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        // 2. Nästa Händelse (Tilläggsinformation)
-        NextEventCard(
-            events = events,
-            now = now.toLocalTime(),
-            onAddEventClick = {
-                val intent = Intent(Intent.ACTION_INSERT)
-                    .setData(CalendarContract.Events.CONTENT_URI)
-                context.startActivity(intent)
-            }
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        // 3. Väder- och Klädrådsrutor
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Väderinformationsruta (Vänster)
-            WeatherInfoCard(
-                modifier = Modifier.weight(1f),
-                data = weatherData,
-                onRefresh = {
-                    scope.launch {
-                        val success = weatherRepository.fetchAndSaveWeatherOnce()
-                        Toast.makeText(context, if (success) "Uppdaterat väder" else "Uppdatering misslyckades — fallback användes", Toast.LENGTH_SHORT).show()
-                    }
+            // 2. Nästa Händelse (Tilläggsinformation)
+            NextEventCard(
+                events = events,
+                now = now.toLocalTime(),
+                onAddEventClick = {
+                    val intent = Intent(Intent.ACTION_INSERT)
+                        .setData(CalendarContract.Events.CONTENT_URI)
+                    context.startActivity(intent)
                 }
             )
 
-            // Klädrådsruta (Höger)
-            ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+            Spacer(Modifier.height(24.dp))
+
+            // 3. Väder- och Klädrådsrutor
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Väderinformationsruta (Vänster)
+                WeatherInfoCard(
+                    modifier = Modifier.weight(1f),
+                    data = weatherData,
+                    onRefresh = {
+                        scope.launch {
+                            val success = weatherRepository.fetchAndSaveWeatherOnce()
+                            Toast.makeText(context, if (success) "Uppdaterat väder" else "Uppdatering misslyckades — fallback användes", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+
+                // Klädrådsruta (Höger)
+                ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Version info
+            Text(
+                text = "v${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray.copy(alpha = 0.5f)
+            )
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        // Version info
-        Text(
-            text = "v${BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.Gray.copy(alpha = 0.5f)
-        )
+        // Settings Icon (Floating TopEnd)
+        IconButton(
+            onClick = onSettingsClick,
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            Icon(
+                imageVector = DagsbalkenIcons.Settings,
+                contentDescription = "Settings",
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
