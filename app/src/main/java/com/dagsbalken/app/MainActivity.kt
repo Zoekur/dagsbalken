@@ -274,8 +274,23 @@ fun LinearClockScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Tidslinjen direkt högst upp (ingen extra bar ovanför)
             Spacer(Modifier.height(24.dp))
+
+            // Logo/Title placeholder (Top Left, separate from card)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = "Dagsbalken",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                )
+            }
+
+            // 1. Tidslinjen
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
@@ -457,23 +472,6 @@ fun LinearDayCard(
             )
         }
 
-        // Text "Dagsbalken" (Top Left)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 24.dp, top = 16.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(8.dp)
-                )
-        ) {
-            Text(
-                text = "Dagsbalken",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-        }
     }
 }
 
