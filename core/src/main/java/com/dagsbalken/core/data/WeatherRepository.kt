@@ -347,6 +347,31 @@ class WeatherRepository(private val context: Context) {
         return suggestions
     }
 
+    // Helper function to extract "City, CC" from Nominatim JSON
+    private fun formatLocationName(json: JSONObject): String {
+        val addr = json.optJSONObject("address") ?: return json.optString("display_name", "")
+
+        val city = addr.optString("city",
+            addr.optString("town",
+                addr.optString("village",
+                    addr.optString("municipality",
+                        addr.optString("hamlet",
+                            addr.optString("county", "")
+                        )
+                    )
+                )
+            )
+        )
+
+        val countryCode = addr.optString("country_code", "").uppercase()
+
+        if (city.isNotBlank() && countryCode.isNotBlank()) {
+            return "$city, $countryCode"
+        }
+
+        return json.optString("display_name", "")
+    }
+
     // Public helper to trigger an immediate fetch & save based on current settings.
     // Returns true if network fetch succeeded, false for simulated fallback.
     suspend fun fetchAndSaveWeatherOnce(): Boolean {
@@ -403,12 +428,12 @@ class WeatherRepository(private val context: Context) {
                                             val body = r.body?.string()
                                             if (!body.isNullOrBlank()) {
                                                 val json = JSONObject(body)
-                                                locationName = json.optString("display_name", "")
+                                                // Use helper to format name
+                                                locationName = formatLocationName(json)
+
                                                 if (locationName.isBlank()) {
-                                                    val addr = json.optJSONObject("address")
-                                                    if (addr != null) {
-                                                        locationName = addr.optString("city", addr.optString("town", addr.optString("village", addr.optString("county", ""))))
-                                                    }
+                                                    // Fallback to display_name or address logic if helper returned empty (unlikely as helper defaults to display_name)
+                                                    locationName = json.optString("display_name", "")
                                                 }
                                                 if (locationName.isNotBlank()) {
                                                     putReverseCache(lat!!, lon!!, ReverseEntry(locationName, System.currentTimeMillis()))
@@ -436,7 +461,8 @@ class WeatherRepository(private val context: Context) {
                     } else {
                         try {
                             val q = URLEncoder.encode(manualName, "UTF-8")
-                            val url = "https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&accept-language=${URLEncoder.encode(Locale.getDefault().language, "UTF-8") }"
+                            // Add addressdetails=1 to get fields for formatting
+                            val url = "https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=1&accept-language=${URLEncoder.encode(Locale.getDefault().language, "UTF-8") }"
                             val req = Request.Builder()
                                 .url(url)
                                 .header("User-Agent", "Dagsbalken/1.0")
@@ -458,7 +484,10 @@ class WeatherRepository(private val context: Context) {
                                             if (!parsedLat.isNaN() && !parsedLon.isNaN()) {
                                                 lat = parsedLat
                                                 lon = parsedLon
-                                                locationName = first.optString("display_name", manualName)
+                                                // Use helper
+                                                locationName = formatLocationName(first)
+                                                if (locationName.isBlank()) locationName = first.optString("display_name", manualName)
+
                                                 putForwardCache(
                                                     manualName,
                                                     ForwardEntry(parsedLat, parsedLon, locationName.ifBlank { manualName }, System.currentTimeMillis())
