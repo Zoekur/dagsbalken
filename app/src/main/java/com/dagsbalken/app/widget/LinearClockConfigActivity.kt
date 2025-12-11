@@ -64,7 +64,7 @@ class LinearClockConfigActivity : ComponentActivity() {
 
         setContent {
             val themePreferences = remember { ThemePreferences(applicationContext) }
-            val themeOption by themePreferences.themeOptionFlow().collectAsState(initial = ThemeOption.NordicCalm)
+            val themeOption by themePreferences.themeOptionFlow().collectAsState(initial = ThemeOption.Cold)
 
             // Lokalt state för konfigurationen
             var config by remember { mutableStateOf(WidgetConfig()) }
