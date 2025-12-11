@@ -2,7 +2,6 @@ package com.dagsbalken.app.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -12,7 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val NordicCalmLightPalette = lightColorScheme(
+// --- Cold (formerly Nordic Calm) ---
+val ColdLightPalette = lightColorScheme(
     primary = Color(0xFF4CAF50),
     onPrimary = Color.White,
     secondary = Color(0xFF81C784),
@@ -21,7 +21,7 @@ private val NordicCalmLightPalette = lightColorScheme(
     onSurface = Color.Black
 )
 
-private val NordicCalmDarkPalette = darkColorScheme(
+val ColdDarkPalette = darkColorScheme(
     primary = Color(0xFF81C784),
     onPrimary = Color.Black,
     secondary = Color(0xFF4CAF50),
@@ -30,7 +30,8 @@ private val NordicCalmDarkPalette = darkColorScheme(
     onSurface = Color.White
 )
 
-private val SolarDawnLightPalette = lightColorScheme(
+// --- Warm (formerly Solar Dawn) ---
+val WarmLightPalette = lightColorScheme(
     primary = Color(0xFFFF9800),
     onPrimary = Color.Black,
     secondary = Color(0xFFFFB74D),
@@ -39,7 +40,7 @@ private val SolarDawnLightPalette = lightColorScheme(
     onSurface = Color.Black
 )
 
-private val SolarDawnDarkPalette = darkColorScheme(
+val WarmDarkPalette = darkColorScheme(
     primary = Color(0xFFFFB74D),
     onPrimary = Color.Black,
     secondary = Color(0xFFFF9800),
@@ -48,18 +49,51 @@ private val SolarDawnDarkPalette = darkColorScheme(
     onSurface = Color.White
 )
 
-private data class ThemePalette(val light: ColorScheme, val dark: ColorScheme)
+// --- Cold High Contrast ---
+val ColdHCLightPalette = lightColorScheme(
+    primary = Color(0xFF0000FF), // Pure Blue
+    onPrimary = Color.White,
+    secondary = Color(0xFF000080),
+    background = Color.White,
+    surface = Color.White,
+    onSurface = Color.Black
+)
 
-enum class ThemeOption(val lightColors: ColorScheme, val darkColors: ColorScheme) {
-    NordicCalm(NordicCalmLightPalette, NordicCalmDarkPalette),
-    SolarDawn(SolarDawnLightPalette, SolarDawnDarkPalette)
-}
+val ColdHCDarkPalette = darkColorScheme(
+    primary = ColdHC_Cyan, // Bright Cyan
+    onPrimary = Color.Black,
+    secondary = Color.White,
+    background = Color.Black,
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF222222) // Slightly lighter for contrast
+)
+
+// --- Warm High Contrast ---
+val WarmHCLightPalette = lightColorScheme(
+    primary = Color(0xFFFF0000), // Pure Red
+    onPrimary = Color.White,
+    secondary = Color(0xFF800000),
+    background = Color.White,
+    surface = Color.White,
+    onSurface = Color.Black
+)
+
+val WarmHCDarkPalette = darkColorScheme(
+    primary = Color(0xFFFFD700), // Gold/Yellow
+    onPrimary = Color.Black,
+    secondary = Color.White,
+    background = Color.Black,
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF222222)
+)
 
 @Composable
 fun DagsbalkenTheme(
-    themeOption: ThemeOption = ThemeOption.NordicCalm,
+    themeOption: ThemeOption = ThemeOption.Cold,
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Disable dynamic to enforce our themes
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
