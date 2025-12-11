@@ -422,7 +422,7 @@ fun LinearDayCard(
             }
 
             // Loopa igenom 24 timmar för ticks
-            for (h in 0..24) {
+            for (h in 0 until 24) {
                 val min = h * 60
                 val x = min * pxPerMin
 
