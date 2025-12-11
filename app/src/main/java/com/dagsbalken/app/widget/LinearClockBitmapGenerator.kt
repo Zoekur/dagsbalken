@@ -120,14 +120,7 @@ object LinearClockBitmapGenerator {
                 canvas.drawLine(x, 0f, x, tickHeight, paint)
 
                 // Draw Text
-                val hourText = "${(h % 24 + 24) % 24}"
-                val textY = if (config.clockSize == LinearClockPrefs.SIZE_4x2) {
-                     height * 0.5f + (12f * config.scale * densityMultiplier) // Center text in 4x2
-                } else {
-                     height * 0.6f + (12f * config.scale * densityMultiplier)
-                }
-
-                canvas.drawText(hourText, x, textY, paint)
+                // Text drawing removed as per user request
             }
         }
 
