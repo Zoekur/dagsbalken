@@ -22,7 +22,20 @@ class ThemePreferences(context: Context) {
     fun themeOptionFlow(): Flow<ThemeOption> = appContext.themeDataStore.data
         .map { prefs ->
             val savedValue = prefs[THEME_OPTION_KEY]
-            ThemeOption.values().firstOrNull { it.name == savedValue } ?: ThemeOption.NordicCalm
+            // Fallback to Cold (previously NordicCalm)
+            // Handle legacy naming mapping if needed, or just default to Cold if mismatch
+            val mappedOption = ThemeOption.values().firstOrNull { it.name == savedValue }
+
+            if (mappedOption != null) {
+                mappedOption
+            } else {
+                // Legacy mapping attempt
+                when (savedValue) {
+                    "NordicCalm" -> ThemeOption.Cold
+                    "SolarDawn" -> ThemeOption.Warm
+                    else -> ThemeOption.Cold
+                }
+            }
         }
 
     suspend fun setThemeOption(option: ThemeOption) {

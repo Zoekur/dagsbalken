@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -43,6 +45,8 @@ import androidx.core.content.ContextCompat
 import com.dagsbalken.core.data.WeatherLocationSettings
 import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
+import com.dagsbalken.app.ui.theme.ThemeOption
+import com.dagsbalken.app.ui.theme.ThemeSelector
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -50,6 +54,8 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    currentTheme: ThemeOption,
+    onThemeSelected: (ThemeOption) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -104,8 +110,19 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            // Theme Section
+            Text("Tema", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            ThemeSelector(
+                selectedOption = currentTheme,
+                onOptionSelected = onThemeSelected
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text("Väder", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
 
