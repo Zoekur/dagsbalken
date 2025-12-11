@@ -11,7 +11,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
@@ -27,8 +26,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -69,8 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
@@ -112,14 +107,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Enable Edge to Edge to draw behind system bars
-        enableEdgeToEdge()
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowCompat.getInsetsController(window, window.decorView)?.let { controller ->
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
+        // We don't need edge-to-edge for this simple fullscreen style; let the system handle status bar.
+        // enableEdgeToEdge()
+        // Remove custom system bar handling so Android draws a normal status bar
+        // WindowCompat.setDecorFitsSystemWindows(window, false)
+        // WindowCompat.getInsetsController(window, window.decorView)?.let { controller ->
+        //     controller.show(WindowInsetsCompat.Type.statusBars())
+        //     controller.systemBarsBehavior =
+        //         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // }
 
         // Schemalägger väder-workern att starta så snart appen öppnas
         WeatherWorker.schedule(applicationContext)
@@ -128,7 +124,11 @@ class MainActivity : ComponentActivity() {
             val themeOption by viewModel.themeOptionFlow.collectAsState(initial = ThemeOption.NordicCalm)
 
             DagsbalkenTheme(themeOption = themeOption) {
-                Surface(Modifier.fillMaxSize()) {
+                // Flytta bakgrundsfärgen hit så vi inte får en separat "rand" i toppen
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     val navController = rememberNavController()
 
                     NavHost(navController = navController, startDestination = "home") {
@@ -259,23 +259,15 @@ fun LinearClockScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            // Ingen egen "panel"-bakgrund här; endast global Surface-bakgrund används
+            .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Theme Selector
-            ThemeSelector(
-                selectedOption = themeOption,
-                onOptionSelected = onThemeOptionChange,
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            // 1. Tidslinjen (Huvudkomponenten) - Nu med dubbel höjd och hela dygnet
+            // 1. Tidslinjen direkt högst upp (ingen extra bar ovanför)
+            Spacer(Modifier.height(4.dp))
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
@@ -302,19 +294,21 @@ fun LinearClockScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Väderinformationsruta (Vänster)
                 WeatherInfoCard(
                     modifier = Modifier.weight(1f),
                     data = weatherData,
                     onRefresh = {
                         scope.launch {
                             val success = weatherRepository.fetchAndSaveWeatherOnce()
-                            Toast.makeText(context, if (success) "Uppdaterat väder" else "Uppdatering misslyckades — fallback användes", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                if (success) "Uppdaterat väder" else "Uppdatering misslyckades — fallback användes",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 )
 
-                // Klädrådsruta (Höger)
                 ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
             }
 
