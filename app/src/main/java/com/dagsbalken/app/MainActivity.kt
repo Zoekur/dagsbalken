@@ -15,6 +15,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -358,178 +362,111 @@ fun LinearDayCard(
     events: List<DayEvent> = emptyList(),
     themeOption: ThemeOption
 ) {
-    val hourLabelPaint = remember {
-        Paint().apply {
-            textAlign = Paint.Align.CENTER
-            textSize = 36f
-            isAntiAlias = true
-            typeface = Typeface.DEFAULT_BOLD
-        }
-    }
-    val hourLabelColor = MaterialTheme.colorScheme.onSurface.toArgb()
-    SideEffect { hourLabelPaint.color = hourLabelColor }
-
     val cornerRadiusDp = 28.dp
 
     // Theme colors
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val trackBgColor = MaterialTheme.colorScheme.surfaceVariant
-    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+    val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val nowColor = Color(0xFFEF4444)
 
     Box(
         Modifier
             .fillMaxWidth()
-            .height(height + 24.dp)
-            .background(Color.Transparent)
+            .height(height)
+            .shadow(elevation = 8.dp, shape = RoundedCornerShape(cornerRadiusDp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(cornerRadiusDp))
     ) {
-        // Yttre kapsel (Bakgrund)
-        Box(
-            Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(height)
-                .background(surfaceColor, RoundedCornerShape(cornerRadiusDp))
-        )
-
         // Canvas för tidslinje (00 - 24)
         Canvas(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(height)
+            modifier = Modifier.fillMaxSize()
         ) {
-            val pad = 20.dp.toPx()
-            val trackTop = size.height * 0.10f
-            val trackHeight = size.height * 0.80f
-            val right = size.width - pad
-            val trackWidth = right - pad
-            val left = pad
-            val cornerRadiusPx = 24f
+            val width = size.width
+            val heightPx = size.height
+            val cornerRadiusPx = cornerRadiusDp.toPx()
 
-            // Define the gradient brush covering the FULL track width
+            // 1. Gradient Background (Full Fill)
             val gradientBrush = Brush.horizontalGradient(
                 0.0f to themeOption.timelineNightColor,
                 0.5f to themeOption.timelineDayColor,
                 1.0f to themeOption.timelineNightColor,
-                startX = left,
-                endX = right
+                startX = 0f,
+                endX = width
             )
 
-            // Inre kapsel (Bakgrund)
+            // Rita bakgrund med gradient
             drawRoundRect(
-                color = trackBgColor,
-                topLeft = Offset(left, trackTop),
-                size = Size(trackWidth, trackHeight),
+                brush = gradientBrush,
+                size = size,
                 cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
             )
 
             // Beräkna pixlar per minut för HELA dygnet (24h = 1440 min)
             val totalMinutes = 24 * 60
-            val pxPerMin = trackWidth / totalMinutes
+            val pxPerMin = width / totalMinutes
 
             // Rita events
             events.forEach { event ->
                 val startMin = event.start.hour * 60 + event.start.minute
                 val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
-
-                // Enkel hantering av events som går över midnatt eller saknar slut -> visa 1h
                 val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
 
-                val eventStartPx = left + (startMin * pxPerMin)
+                val eventStartPx = startMin * pxPerMin
                 val eventWidthPx = (actualEndMin - startMin) * pxPerMin
 
-                // Rita event som ett färgat block (svagt)
+                // Rita event som ett färgat block (full höjd)
                 drawRect(
                     color = Color(event.color).copy(alpha = 0.3f),
-                    topLeft = Offset(eventStartPx, trackTop),
-                    size = Size(eventWidthPx, trackHeight)
+                    topLeft = Offset(eventStartPx, 0f),
+                    size = Size(eventWidthPx, heightPx)
                 )
             }
 
-            // Nuvarande tid i minuter
-            val currentMinutes = now.hour * 60 + now.minute
-            val currentX = left + (currentMinutes * pxPerMin)
-
-            // Gradient fill (Från 00:00 till nu)
-            val passedWidth = currentX - left
-            if (passedWidth > 0) {
-                 // Use gradient brush
-                 drawRoundRect(
-                    brush = gradientBrush,
-                    topLeft = Offset(left, trackTop),
-                    size = Size(passedWidth, trackHeight),
-                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
-                )
-                 // Om "passed" är bredare än radiens kurva, rita en fyrkant över högra hörnen
-                 // för att få en skarp kant mot "framtiden" (eller behåll rundad om det är designen)
-                 // Här behåller vi den klippt vid 'currentX' men säkerställer att vi inte ritar utanför vänster kant.
-                 if (passedWidth > cornerRadiusPx) {
-                     // Fyll ut högra hörnen så det ser ut som progress bar som fortsätter
-                     drawRect(
-                         brush = gradientBrush, // Use same brush to blend seamlessly
-                         topLeft = Offset(currentX - 10f, trackTop), // Lite överlapp
-                         size = Size(10f, trackHeight)
-                     )
-                 }
-            }
-
-            // Inre kapsel (Border - ritas ovanpå för snyggare kant)
-            drawRoundRect(
-                color = borderColor,
-                topLeft = Offset(left, trackTop),
-                size = Size(trackWidth, trackHeight),
-                style = Stroke(width = 2f),
-                cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
-            )
-
-            // Loopa igenom 24 timmar
+            // Loopa igenom 24 timmar för ticks
             for (h in 0..24) {
                 val min = h * 60
-                val x = left + (min * pxPerMin)
+                val x = min * pxPerMin
 
-                // Rita Tim-markering (långt streck)
+                val isMajor = h in listOf(6, 12, 18)
+                val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
+                val tickStroke = if (isMajor) 4f else 2f
+                val color = if (isMajor) majorTickColor else tickColor
+
+                // Centrerade ticks
+                val startY = (heightPx - tickHeight) / 2f
+                val endY = startY + tickHeight
+
                 drawLine(
-                    color = tickColor,
-                    start = Offset(x, trackTop),
-                    end = Offset(x, trackTop + trackHeight * 0.4f),
-                    strokeWidth = 2f
+                    color = color,
+                    start = Offset(x, startY),
+                    end = Offset(x, endY),
+                    strokeWidth = tickStroke,
+                    cap = StrokeCap.Round
                 )
-
-                // Text: Endast för 6, 12, 18, 24
-                if (h in listOf(6, 12, 18)) {
-                    val label = h.toString()
-                    drawContext.canvas.nativeCanvas.drawText(
-                        label,
-                        x,
-                        trackTop + trackHeight / 2f + 18f,
-                        hourLabelPaint
-                    )
-                }
-
-                // Halvtimmar (korta streck) - men inte efter 24
-                if (h < 24) {
-                    val halfMin = min + 30
-                    val halfX = left + (halfMin * pxPerMin)
-                    drawLine(
-                        color = tickColor.copy(alpha = 0.3f),
-                        start = Offset(halfX, trackTop),
-                        end = Offset(halfX, trackTop + trackHeight * 0.2f),
-                        strokeWidth = 2f
-                    )
-                }
             }
+
+            // Nuvarande tid
+            val currentMinutes = now.hour * 60 + now.minute
+            val currentX = currentMinutes * pxPerMin
 
             // Nu-markör (röd linje)
             drawLine(
                 color = nowColor,
-                start = Offset(currentX, trackTop),
-                end = Offset(currentX, trackTop + trackHeight),
+                start = Offset(currentX, 0f),
+                end = Offset(currentX, heightPx),
                 strokeWidth = 4f,
                 cap = StrokeCap.Square
             )
         }
+
+        // Text "Dagsbalken" (Top Left)
+        Text(
+            text = "Dagsbalken",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 24.dp, top = 16.dp)
+        )
     }
 }
 
@@ -547,6 +484,13 @@ fun NextEventCard(events: List<DayEvent>, now: LocalTime, onAddEventClick: () ->
             Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .innerShadow(
+                    color = Color.Black.copy(alpha = 0.2f),
+                    blur = 6.dp,
+                    offsetY = 2.dp,
+                    offsetX = 2.dp,
+                    cornerRadius = 16.dp
+                )
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -737,4 +681,51 @@ fun rememberTicker1s(): State<LocalDateTime> {
 		}
 	}
 	return state
+}
+
+// -------- INNER SHADOW MODIFIER --------
+fun Modifier.innerShadow(
+    color: Color,
+    blur: Dp = 6.dp,
+    offsetY: Dp = 2.dp,
+    offsetX: Dp = 2.dp,
+    cornerRadius: Dp = 0.dp
+) = this.drawWithCache {
+    val paint = android.graphics.Paint().apply {
+        this.color = color.toArgb()
+        this.isAntiAlias = true
+        this.style = android.graphics.Paint.Style.STROKE
+        this.strokeWidth = blur.toPx() * 2
+        this.maskFilter = android.graphics.BlurMaskFilter(blur.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+    }
+
+    val path = androidx.compose.ui.graphics.Path().apply {
+        addRoundRect(
+            androidx.compose.ui.geometry.RoundRect(
+                left = 0f, top = 0f, right = size.width, bottom = size.height,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius.toPx())
+            )
+        )
+    }
+
+    onDrawWithContent {
+        drawContent()
+        drawIntoCanvas { canvas ->
+            canvas.save()
+            canvas.clipPath(path)
+
+            val strokeW = paint.strokeWidth
+            val left = -strokeW / 2 + offsetX.toPx()
+            val top = -strokeW / 2 + offsetY.toPx()
+            val right = size.width + strokeW / 2 + offsetX.toPx()
+            val bottom = size.height + strokeW / 2 + offsetY.toPx()
+
+            canvas.nativeCanvas.drawRoundRect(
+                left, top, right, bottom,
+                cornerRadius.toPx(), cornerRadius.toPx(),
+                paint
+            )
+            canvas.restore()
+        }
+    }
 }
