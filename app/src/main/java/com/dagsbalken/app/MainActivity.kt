@@ -264,12 +264,19 @@ fun LinearClockScreen(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // TOP HEADER: Settings (Right)
+        // TOP HEADER: Title (Left) + Settings (Right)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(
+                text = "Dagsbalken",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp
+            )
+
             IconButton(onClick = onSettingsClick) {
                 Icon(
                     imageVector = DagsbalkenIcons.Settings,
@@ -625,6 +632,11 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "${data.precipitationChance}% risk för nederbörd",
+                        fontSize = 16.sp,
+                        color = Color.Gray
                     )
 
                     Spacer(Modifier.height(8.dp))
