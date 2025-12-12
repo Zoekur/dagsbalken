@@ -398,7 +398,7 @@ fun LinearDayCard(
                     )
                 }
                 
-                onDrawBehind {
+                onDrawWithContent {
                     val width = size.width
                     val heightPx = size.height
                     
