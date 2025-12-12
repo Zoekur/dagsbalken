@@ -424,14 +424,14 @@ fun LinearDayCard(
                         val currentX = currentMinutes * pxPerMin
 
                         // 1. Gradient Background (Endast passerad tid)
-                        // Clip drawing to card shape
-                        clipPath(cardPath) {
-                            drawRect(
-                                brush = gradientBrush,
-                                topLeft = Offset.Zero,
-                                size = Size(currentX, heightPx)
-                            )
-                        }
+                        // We can't use clipPath directly in this draw scope in all versions,
+                        // so we simply draw the gradient rect from the left up to currentX,
+                        // relying on the parent RoundedCornerShape background to visually clip.
+                        drawRect(
+                            brush = gradientBrush,
+                            topLeft = Offset.Zero,
+                            size = Size(currentX.coerceIn(0f, width), heightPx)
+                        )
 
                         // 2. Rita events (Använd index-loop för att undvika iterator-allokering)
                         for (i in events.indices) {
