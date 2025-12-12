@@ -388,88 +388,101 @@ fun LinearDayCard(
             .shadow(elevation = 8.dp, shape = RoundedCornerShape(cornerRadiusDp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(cornerRadiusDp))
     ) {
-        // Canvas för tidslinje (00 - 24)
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val width = size.width
-            val heightPx = size.height
-            val cornerRadiusPx = cornerRadiusDp.toPx()
+        // Tidslinje med drawWithCache för att undvika objektallokeringar i draw-loopen (CodeQL fix)
+        Spacer(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val width = size.width
+                    val heightPx = size.height
+                    val cornerRadiusPx = cornerRadiusDp.toPx()
 
-            // 1. Gradient Background (Full Fill)
-            val gradientBrush = Brush.horizontalGradient(
-                0.0f to themeOption.timelineNightColor,
-                0.5f to themeOption.timelineDayColor,
-                1.0f to themeOption.timelineNightColor,
-                startX = 0f,
-                endX = width
-            )
+                    // Skapa Gradient Brush i cache-blocket (undviker allokering vid varje ritning)
+                    val gradientBrush = Brush.horizontalGradient(
+                        0.0f to themeOption.timelineNightColor,
+                        0.5f to themeOption.timelineDayColor,
+                        1.0f to themeOption.timelineNightColor,
+                        startX = 0f,
+                        endX = width
+                    )
 
-            // Rita bakgrund med gradient
-            drawRoundRect(
-                brush = gradientBrush,
-                size = size,
-                cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
-            )
+                    // Förbereda Path objekt i cache-blocket
+                    val cardPath = androidx.compose.ui.graphics.Path()
+                    cardPath.addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            0f, 0f, width, heightPx,
+                            androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
+                        )
+                    )
 
-            // Beräkna pixlar per minut för HELA dygnet (24h = 1440 min)
-            val totalMinutes = 24 * 60
-            val pxPerMin = width / totalMinutes
+                    // Beräkna konstanter
+                    val pxPerMin = width / (24 * 60)
 
-            // Rita events
-            events.forEach { event ->
-                val startMin = event.start.hour * 60 + event.start.minute
-                val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
-                val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
+                    onDrawBehind {
+                        // Nuvarande tid
+                        val currentMinutes = now.hour * 60 + now.minute
+                        val currentX = currentMinutes * pxPerMin
 
-                val eventStartPx = startMin * pxPerMin
-                val eventWidthPx = (actualEndMin - startMin) * pxPerMin
+                        // 1. Gradient Background (Endast passerad tid)
+                        // Clip drawing to card shape
+                        clipPath(cardPath) {
+                            drawRect(
+                                brush = gradientBrush,
+                                topLeft = Offset.Zero,
+                                size = Size(currentX, heightPx)
+                            )
+                        }
 
-                // Rita event som ett färgat block (full höjd)
-                drawRect(
-                    color = Color(event.color).copy(alpha = 0.3f),
-                    topLeft = Offset(eventStartPx, 0f),
-                    size = Size(eventWidthPx, heightPx)
-                )
-            }
+                        // 2. Rita events (Använd index-loop för att undvika iterator-allokering)
+                        for (i in events.indices) {
+                            val event = events[i]
+                            val startMin = event.start.hour * 60 + event.start.minute
+                            val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
+                            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
 
-            // Loopa igenom 24 timmar för ticks
-            for (h in 0 until 24) {
-                val min = h * 60
-                val x = min * pxPerMin
+                            val eventStartPx = startMin * pxPerMin
+                            val eventWidthPx = (actualEndMin - startMin) * pxPerMin
 
-                val isMajor = h in listOf(6, 12, 18)
-                val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
-                val tickStroke = if (isMajor) 4f else 2f
-                val color = if (isMajor) majorTickColor else tickColor
+                            drawRect(
+                                color = Color(event.color).copy(alpha = 0.3f),
+                                topLeft = Offset(eventStartPx, 0f),
+                                size = Size(eventWidthPx, heightPx)
+                            )
+                        }
 
-                // Centrerade ticks
-                val startY = (heightPx - tickHeight) / 2f
-                val endY = startY + tickHeight
+                        // 3. Ticks
+                        for (h in 0 until 24) {
+                            val min = h * 60
+                            val x = min * pxPerMin
 
-                drawLine(
-                    color = color,
-                    start = Offset(x, startY),
-                    end = Offset(x, endY),
-                    strokeWidth = tickStroke,
-                    cap = StrokeCap.Round
-                )
-            }
+                            val isMajor = h == 6 || h == 12 || h == 18
+                            val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
+                            val tickStroke = if (isMajor) 4f else 2f
+                            val color = if (isMajor) majorTickColor else tickColor
 
-            // Nuvarande tid
-            val currentMinutes = now.hour * 60 + now.minute
-            val currentX = currentMinutes * pxPerMin
+                            val startY = (heightPx - tickHeight) / 2f
+                            val endY = startY + tickHeight
 
-            // Nu-markör (röd linje)
-            drawLine(
-                color = nowColor,
-                start = Offset(currentX, 0f),
-                end = Offset(currentX, heightPx),
-                strokeWidth = 4f,
-                cap = StrokeCap.Square
-            )
-        }
+                            drawLine(
+                                color = color,
+                                start = Offset(x, startY),
+                                end = Offset(x, endY),
+                                strokeWidth = tickStroke,
+                                cap = StrokeCap.Round
+                            )
+                        }
 
+                        // 4. Nu-markör (röd linje)
+                        drawLine(
+                            color = nowColor,
+                            start = Offset(currentX, 0f),
+                            end = Offset(currentX, heightPx),
+                            strokeWidth = 4f,
+                            cap = StrokeCap.Square
+                        )
+                    }
+                }
+        )
     }
 }
 
