@@ -77,8 +77,9 @@ Dagsbalken is an Android calendar and weather application built with Kotlin and 
 
 ### Build Configuration
 - **Avoid Gradle milestone versions** - they cause IDE crashes with threading issues
-- **Avoid experimental AGP versions** - stick to stable releases
+- **Avoid experimental AGP versions** - stick to stable releases (e.g., 8.7.x, 8.8.x, not 8.13.x which doesn't exist)
 - Use version catalog (`libs.versions.toml`) for dependency management
+- Verify dependency versions exist before updating
 
 ## Security Guidelines
 
