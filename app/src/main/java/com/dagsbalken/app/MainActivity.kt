@@ -481,7 +481,7 @@ fun LinearDayCard(
                     )
                 }
             }
-    ) {}
+    )
 }
 
 // -------- NÄSTA HÄNDELSE --------
