@@ -12,7 +12,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.com.dagsbalken.com.com.dagsbalken.app"
+        applicationId = "com.dagsbalken.app"
         // minSdk 33 är ett bra val för moderna funktioner som Glance.
         minSdk = 33
         targetSdk = 36
