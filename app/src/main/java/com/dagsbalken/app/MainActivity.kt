@@ -381,6 +381,10 @@ fun LinearDayCard(
     val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val nowColor = Color(0xFFEF4444)
 
+    // Reuse Path object to avoid allocation in draw loop (CodeQL/Performance optimization)
+    // Must be declared in Composable scope, not inside DrawScope (Canvas)
+    val cardPath = remember { androidx.compose.ui.graphics.Path() }
+
     Box(
         Modifier
             .fillMaxWidth()
