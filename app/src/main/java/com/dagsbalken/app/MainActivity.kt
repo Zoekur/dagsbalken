@@ -398,18 +398,18 @@ fun LinearDayCard(
                     )
                 }
                 
+                // Cache gradient brush to avoid recreation on every draw
+                val gradientBrush = Brush.horizontalGradient(
+                    0.0f to themeOption.timelineNightColor,
+                    0.5f to themeOption.timelineDayColor,
+                    1.0f to themeOption.timelineNightColor,
+                    startX = 0f,
+                    endX = size.width
+                )
+                
                 onDrawBehind {
                     val width = size.width
                     val heightPx = size.height
-                    
-                    // 1. Gradient Background (Time Passed Only)
-                    val gradientBrush = Brush.horizontalGradient(
-                        0.0f to themeOption.timelineNightColor,
-                        0.5f to themeOption.timelineDayColor,
-                        1.0f to themeOption.timelineNightColor,
-                        startX = 0f,
-                        endX = width
-                    )
 
                     // Beräkna pixlar per minut för HELA dygnet (24h = 1440 min)
                     val totalMinutes = 24 * 60
