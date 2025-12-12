@@ -381,6 +381,10 @@ fun LinearDayCard(
     val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val nowColor = Color(0xFFEF4444)
 
+    // Reuse Path object to avoid allocation in draw loop (CodeQL/Performance optimization)
+    // Must be declared in Composable scope, not inside DrawScope (Canvas)
+    val cardPath = remember { androidx.compose.ui.graphics.Path() }
+
     Box(
         Modifier
             .fillMaxWidth()
@@ -413,31 +417,27 @@ fun LinearDayCard(
             val currentMinutes = now.hour * 60 + now.minute
             val currentX = currentMinutes * pxPerMin
 
-            // Cache the cardPath using drawWithCache for performance
-            Modifier
-                .drawWithCache {
-                    val cardPath = androidx.compose.ui.graphics.Path().apply {
-                        addRoundRect(
-                            androidx.compose.ui.geometry.RoundRect(
-                                0f, 0f, width, heightPx,
-                                androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
-                            )
-                        )
-                    }
-                    onDrawWithContent {
-                        // Clip drawing to card shape (handles rounded corners for partial fills)
-                        clipPath(cardPath) {
-                            // Draw Gradient ONLY for Passed Time
-                            drawRect(
-                                brush = gradientBrush,
-                                topLeft = Offset.Zero,
-                                size = Size(currentX, heightPx)
-                            )
-                            // Future Time is transparent (shows surface background) or could be filled with specific color
-                        }
-                        // Draw the rest of the content if needed
-                    }
-                }
+            // Update reusable path with current dimensions
+            cardPath.reset()
+            cardPath.addRoundRect(
+                androidx.compose.ui.geometry.RoundRect(
+                    0f, 0f, width, heightPx,
+                    androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
+                )
+            )
+
+            // Clip drawing to card shape (handles rounded corners for partial fills)
+            androidx.compose.ui.graphics.drawscope.clipPath(cardPath) {
+                // Draw Gradient ONLY for Passed Time
+                drawRect(
+                    brush = gradientBrush,
+                    topLeft = Offset.Zero,
+                    size = Size(currentX, heightPx)
+                )
+
+                // Future Time is transparent (shows surface background) or could be filled with specific color
+            }
+
             // Rita events
             events.forEach { event ->
                 val startMin = event.start.hour * 60 + event.start.minute
