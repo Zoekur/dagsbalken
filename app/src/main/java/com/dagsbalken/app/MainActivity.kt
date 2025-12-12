@@ -396,7 +396,7 @@ fun LinearDayCard(
             val heightPx = size.height
             val cornerRadiusPx = cornerRadiusDp.toPx()
 
-            // 1. Gradient Background (Full Fill)
+            // 1. Gradient Background (Time Passed Only)
             val gradientBrush = Brush.horizontalGradient(
                 0.0f to themeOption.timelineNightColor,
                 0.5f to themeOption.timelineDayColor,
@@ -405,16 +405,34 @@ fun LinearDayCard(
                 endX = width
             )
 
-            // Rita bakgrund med gradient
-            drawRoundRect(
-                brush = gradientBrush,
-                size = size,
-                cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
-            )
-
             // Beräkna pixlar per minut för HELA dygnet (24h = 1440 min)
             val totalMinutes = 24 * 60
             val pxPerMin = width / totalMinutes
+
+            // Nuvarande tid
+            val currentMinutes = now.hour * 60 + now.minute
+            val currentX = currentMinutes * pxPerMin
+
+            val cardPath = androidx.compose.ui.graphics.Path().apply {
+                addRoundRect(
+                    androidx.compose.ui.geometry.RoundRect(
+                        0f, 0f, width, heightPx,
+                        androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
+                    )
+                )
+            }
+
+            // Clip drawing to card shape (handles rounded corners for partial fills)
+            androidx.compose.ui.graphics.drawscope.clipPath(cardPath) {
+                // Draw Gradient ONLY for Passed Time
+                drawRect(
+                    brush = gradientBrush,
+                    topLeft = Offset.Zero,
+                    size = Size(currentX, heightPx)
+                )
+
+                // Future Time is transparent (shows surface background) or could be filled with specific color
+            }
 
             // Rita events
             events.forEach { event ->
@@ -455,10 +473,6 @@ fun LinearDayCard(
                     cap = StrokeCap.Round
                 )
             }
-
-            // Nuvarande tid
-            val currentMinutes = now.hour * 60 + now.minute
-            val currentX = currentMinutes * pxPerMin
 
             // Nu-markör (röd linje)
             drawLine(
