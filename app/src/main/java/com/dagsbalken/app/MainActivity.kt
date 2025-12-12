@@ -381,10 +381,6 @@ fun LinearDayCard(
     val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val nowColor = Color(0xFFEF4444)
 
-    // Reuse Path object to avoid allocation in draw loop (CodeQL/Performance optimization)
-    // Must be declared in Composable scope, not inside DrawScope (Canvas)
-    val cardPath = remember { androidx.compose.ui.graphics.Path() }
-
     Box(
         Modifier
             .fillMaxWidth()
@@ -392,102 +388,101 @@ fun LinearDayCard(
             .shadow(elevation = 8.dp, shape = RoundedCornerShape(cornerRadiusDp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(cornerRadiusDp))
     ) {
-        // Canvas för tidslinje (00 - 24)
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val width = size.width
-            val heightPx = size.height
-            val cornerRadiusPx = cornerRadiusDp.toPx()
+        // Tidslinje med drawWithCache för att undvika objektallokeringar i draw-loopen (CodeQL fix)
+        Spacer(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val width = size.width
+                    val heightPx = size.height
+                    val cornerRadiusPx = cornerRadiusDp.toPx()
 
-            // 1. Gradient Background (Time Passed Only)
-            val gradientBrush = Brush.horizontalGradient(
-                0.0f to themeOption.timelineNightColor,
-                0.5f to themeOption.timelineDayColor,
-                1.0f to themeOption.timelineNightColor,
-                startX = 0f,
-                endX = width
-            )
+                    // Skapa Gradient Brush i cache-blocket (undviker allokering vid varje ritning)
+                    val gradientBrush = Brush.horizontalGradient(
+                        0.0f to themeOption.timelineNightColor,
+                        0.5f to themeOption.timelineDayColor,
+                        1.0f to themeOption.timelineNightColor,
+                        startX = 0f,
+                        endX = width
+                    )
 
-            // Beräkna pixlar per minut för HELA dygnet (24h = 1440 min)
-            val totalMinutes = 24 * 60
-            val pxPerMin = width / totalMinutes
+                    // Förbereda Path objekt i cache-blocket
+                    val cardPath = androidx.compose.ui.graphics.Path()
+                    cardPath.addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            0f, 0f, width, heightPx,
+                            androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
+                        )
+                    )
 
-            // Nuvarande tid
-            val currentMinutes = now.hour * 60 + now.minute
-            val currentX = currentMinutes * pxPerMin
+                    // Beräkna konstanter
+                    val pxPerMin = width / (24 * 60)
 
-            // Update reusable path with current dimensions
-            cardPath.reset()
-            cardPath.addRoundRect(
-                androidx.compose.ui.geometry.RoundRect(
-                    0f, 0f, width, heightPx,
-                    androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
-                )
-            )
+                    onDrawBehind {
+                        // Nuvarande tid
+                        val currentMinutes = now.hour * 60 + now.minute
+                        val currentX = currentMinutes * pxPerMin
 
-            // Clip drawing to card shape (handles rounded corners for partial fills)
-            androidx.compose.ui.graphics.drawscope.clipPath(cardPath) {
-                // Draw Gradient ONLY for Passed Time
-                drawRect(
-                    brush = gradientBrush,
-                    topLeft = Offset.Zero,
-                    size = Size(currentX, heightPx)
-                )
+                        // 1. Gradient Background (Endast passerad tid)
+                        // Clip drawing to card shape
+                        clipPath(cardPath) {
+                            drawRect(
+                                brush = gradientBrush,
+                                topLeft = Offset.Zero,
+                                size = Size(currentX, heightPx)
+                            )
+                        }
 
-                // Future Time is transparent (shows surface background) or could be filled with specific color
-            }
+                        // 2. Rita events (Använd index-loop för att undvika iterator-allokering)
+                        for (i in events.indices) {
+                            val event = events[i]
+                            val startMin = event.start.hour * 60 + event.start.minute
+                            val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
+                            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
 
-            // Rita events
-            events.forEach { event ->
-                val startMin = event.start.hour * 60 + event.start.minute
-                val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
-                val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
+                            val eventStartPx = startMin * pxPerMin
+                            val eventWidthPx = (actualEndMin - startMin) * pxPerMin
 
-                val eventStartPx = startMin * pxPerMin
-                val eventWidthPx = (actualEndMin - startMin) * pxPerMin
+                            drawRect(
+                                color = Color(event.color).copy(alpha = 0.3f),
+                                topLeft = Offset(eventStartPx, 0f),
+                                size = Size(eventWidthPx, heightPx)
+                            )
+                        }
 
-                // Rita event som ett färgat block (full höjd)
-                drawRect(
-                    color = Color(event.color).copy(alpha = 0.3f),
-                    topLeft = Offset(eventStartPx, 0f),
-                    size = Size(eventWidthPx, heightPx)
-                )
-            }
+                        // 3. Ticks
+                        for (h in 0 until 24) {
+                            val min = h * 60
+                            val x = min * pxPerMin
 
-            // Loopa igenom 24 timmar för ticks
-            for (h in 0 until 24) {
-                val min = h * 60
-                val x = min * pxPerMin
+                            val isMajor = h == 6 || h == 12 || h == 18
+                            val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
+                            val tickStroke = if (isMajor) 4f else 2f
+                            val color = if (isMajor) majorTickColor else tickColor
 
-                val isMajor = h in listOf(6, 12, 18)
-                val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
-                val tickStroke = if (isMajor) 4f else 2f
-                val color = if (isMajor) majorTickColor else tickColor
+                            val startY = (heightPx - tickHeight) / 2f
+                            val endY = startY + tickHeight
 
-                // Centrerade ticks
-                val startY = (heightPx - tickHeight) / 2f
-                val endY = startY + tickHeight
+                            drawLine(
+                                color = color,
+                                start = Offset(x, startY),
+                                end = Offset(x, endY),
+                                strokeWidth = tickStroke,
+                                cap = StrokeCap.Round
+                            )
+                        }
 
-                drawLine(
-                    color = color,
-                    start = Offset(x, startY),
-                    end = Offset(x, endY),
-                    strokeWidth = tickStroke,
-                    cap = StrokeCap.Round
-                )
-            }
-
-            // Nu-markör (röd linje)
-            drawLine(
-                color = nowColor,
-                start = Offset(currentX, 0f),
-                end = Offset(currentX, heightPx),
-                strokeWidth = 4f,
-                cap = StrokeCap.Square
-            )
-        }
-
+                        // 4. Nu-markör (röd linje)
+                        drawLine(
+                            color = nowColor,
+                            start = Offset(currentX, 0f),
+                            end = Offset(currentX, heightPx),
+                            strokeWidth = 4f,
+                            cap = StrokeCap.Square
+                        )
+                    }
+                }
+        )
     }
 }
 
