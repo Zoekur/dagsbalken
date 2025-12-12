@@ -413,27 +413,31 @@ fun LinearDayCard(
             val currentMinutes = now.hour * 60 + now.minute
             val currentX = currentMinutes * pxPerMin
 
-            val cardPath = androidx.compose.ui.graphics.Path().apply {
-                addRoundRect(
-                    androidx.compose.ui.geometry.RoundRect(
-                        0f, 0f, width, heightPx,
-                        androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
-                    )
-                )
-            }
-
-            // Clip drawing to card shape (handles rounded corners for partial fills)
-            androidx.compose.ui.graphics.drawscope.clipPath(cardPath) {
-                // Draw Gradient ONLY for Passed Time
-                drawRect(
-                    brush = gradientBrush,
-                    topLeft = Offset.Zero,
-                    size = Size(currentX, heightPx)
-                )
-
-                // Future Time is transparent (shows surface background) or could be filled with specific color
-            }
-
+            // Cache the cardPath using drawWithCache for performance
+            Modifier
+                .drawWithCache {
+                    val cardPath = androidx.compose.ui.graphics.Path().apply {
+                        addRoundRect(
+                            androidx.compose.ui.geometry.RoundRect(
+                                0f, 0f, width, heightPx,
+                                androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
+                            )
+                        )
+                    }
+                    onDrawWithContent {
+                        // Clip drawing to card shape (handles rounded corners for partial fills)
+                        clipPath(cardPath) {
+                            // Draw Gradient ONLY for Passed Time
+                            drawRect(
+                                brush = gradientBrush,
+                                topLeft = Offset.Zero,
+                                size = Size(currentX, heightPx)
+                            )
+                            // Future Time is transparent (shows surface background) or could be filled with specific color
+                        }
+                        // Draw the rest of the content if needed
+                    }
+                }
             // Rita events
             events.forEach { event ->
                 val startMin = event.start.hour * 60 + event.start.minute
