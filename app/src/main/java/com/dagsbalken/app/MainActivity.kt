@@ -379,7 +379,7 @@ fun LinearDayCard(
     // Theme colors
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-    val nowColor = Color(0xFFEF4444)
+    val nowColor = MaterialTheme.colorScheme.error
 
     Box(
         Modifier
