@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -45,6 +46,14 @@ import com.dagsbalken.app.widget.LinearClockBitmapGenerator
 object LinearClockWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
+
+    suspend fun updateAll(context: Context) {
+        GlanceAppWidgetManager(context)
+            .getGlanceIds(LinearClockWidget::class.java)
+            .forEach { id ->
+                update(context, id)
+            }
+    }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val weatherRepo = WeatherRepository(context)
