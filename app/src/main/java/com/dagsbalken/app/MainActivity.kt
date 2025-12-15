@@ -178,37 +178,6 @@ fun LinearClockScreen(
     // Samlar in väderdata från DataStore i realtid
     val weatherData by weatherRepository.weatherDataFlow.collectAsState(initial = WeatherData())
 
-    // --- New: observe location settings and request location permission if needed ---
-    val locationSettings by weatherRepository.locationSettingsFlow.collectAsState(initial = WeatherLocationSettings())
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted: Boolean ->
-            if (isGranted) {
-                // Trigger a fetch since permission is now granted
-                scope.launch { weatherRepository.fetchAndSaveWeatherOnce() }
-            } else {
-                // If denied, fallback: save setting to use manual location (handled elsewhere in SettingsScreen)
-            }
-        }
-    )
-
-    // When the location setting changes, trigger an immediate fetch
-    LaunchedEffect(locationSettings.useCurrentLocation, locationSettings.manualLocationName) {
-        if (locationSettings.useCurrentLocation) {
-            // Ensure we have location permission before attempting a GPS-based fetch
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                weatherRepository.fetchAndSaveWeatherOnce()
-            } else {
-                // Ask for permission (the permission result path will trigger fetch if granted)
-                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        } else {
-            // Manual location selected -> fetch for manual name
-            weatherRepository.fetchAndSaveWeatherOnce()
-        }
-    }
-
     // Events state
     var events by remember { mutableStateOf(emptyList<DayEvent>()) }
 
@@ -225,15 +194,42 @@ fun LinearClockScreen(
         }
     }
 
-    // Permission launcher
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted: Boolean ->
-            if (isGranted) {
-                loadEvents()
-            }
+    // Unified Permission Launcher
+    val multiplePermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsMap ->
+        // Handle Calendar Permission
+        if (permissionsMap[Manifest.permission.READ_CALENDAR] == true) {
+            loadEvents()
         }
-    )
+
+        // Handle Location Permission
+        if (permissionsMap[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissionsMap[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            // Permission granted, trigger fetch immediately
+             scope.launch { weatherRepository.fetchAndSaveWeatherOnce() }
+        }
+    }
+
+    // --- New: observe location settings and request location permission if needed ---
+    val locationSettings by weatherRepository.locationSettingsFlow.collectAsState(initial = WeatherLocationSettings())
+
+    // When the location setting changes, trigger an immediate fetch
+    LaunchedEffect(locationSettings.useCurrentLocation, locationSettings.manualLocationName) {
+        if (locationSettings.useCurrentLocation) {
+            // Ensure we have location permission before attempting a GPS-based fetch
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                weatherRepository.fetchAndSaveWeatherOnce()
+            } else {
+                // Ask for permission (the permission result path will trigger fetch if granted)
+                 multiplePermissionsLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }
+        } else {
+            // Manual location selected -> fetch for manual name
+            weatherRepository.fetchAndSaveWeatherOnce()
+        }
+    }
+
 
     // Lyssna på Lifecycle ON_RESUME för att uppdatera events om användaren ändrat kalendern
     DisposableEffect(lifecycleOwner) {
@@ -250,14 +246,25 @@ fun LinearClockScreen(
 
     // Initiera laddning vid start om permission finns, annars fråga
     LaunchedEffect(Unit) {
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.READ_CALENDAR
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            launcher.launch(Manifest.permission.READ_CALENDAR)
+        val permissionsToRequest = mutableListOf<String>()
+
+        // Check Calendar
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.READ_CALENDAR)
+        }
+
+        // Check Location (Request on startup as per requirement)
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+             permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+             permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            multiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
             loadEvents()
+            // If location permission is already granted, we might want to refresh weather too if setting is enabled,
+            // but the locationSettings LaunchedEffect handles that separately.
         }
     }
 
