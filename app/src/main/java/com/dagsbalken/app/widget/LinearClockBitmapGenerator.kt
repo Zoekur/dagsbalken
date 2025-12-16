@@ -12,6 +12,12 @@ import java.time.LocalTime
 
 object LinearClockBitmapGenerator {
 
+    // ThreadLocal to reuse Paint object and avoid allocation every minute per widget
+    // Paint is not thread-safe, so ThreadLocal ensures safety if multiple updates happen concurrently on different threads.
+    private val paintCache = ThreadLocal.withInitial {
+        Paint().apply { isAntiAlias = true }
+    }
+
     fun generate(
         context: Context,
         width: Int,
@@ -29,13 +35,14 @@ object LinearClockBitmapGenerator {
         val colorRedLine = config.accentColor
         val colorBorder = config.textColor
 
-        // Paint setup
-        val paint = Paint().apply {
-            isAntiAlias = true
-        }
+        // Reuse Paint object
+        val paint = paintCache.get()!!
+        paint.reset()
+        paint.isAntiAlias = true
 
         // 1. Draw Background (Future - Right Side)
         paint.color = colorFuture
+        paint.style = Paint.Style.FILL // Default after reset is FILL, but explicit is good
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
 
         // Adjust scale/density based on size mode
