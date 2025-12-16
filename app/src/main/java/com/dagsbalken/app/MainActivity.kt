@@ -53,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -514,6 +515,12 @@ fun NextEventCard(events: List<DayEvent>, now: LocalTime, onAddEventClick: () ->
                     offsetX = 2.dp,
                     cornerRadius = 16.dp
                 )
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(
+                    onClick = onAddEventClick,
+                    role = androidx.compose.ui.semantics.Role.Button,
+                    onClickLabel = "Lägg till event"
+                )
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -524,13 +531,11 @@ fun NextEventCard(events: List<DayEvent>, now: LocalTime, onAddEventClick: () ->
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            IconButton(onClick = onAddEventClick) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Lägg till event",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     } else {
         Row(
