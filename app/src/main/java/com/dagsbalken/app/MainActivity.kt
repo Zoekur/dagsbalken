@@ -274,7 +274,7 @@ fun LinearClockScreen(
         Modifier
             .fillMaxSize()
             // Ingen egen "panel"-bakgrund här; endast global Surface-bakgrund används
-            .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -356,6 +356,7 @@ fun LinearClockScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .padding(top = 24.dp)
         ) {
             IconButton(
                 onClick = onSettingsClick
