@@ -21,7 +21,7 @@ object LinearClockBitmapGenerator {
         config: WidgetConfig,
         currentTime: LocalTime = LocalTime.now()
     ): Bitmap {
-        // Ensure valid dimensions
+        // Ensure valid dimensions to prevent crashes and division by zero
         val safeWidth = max(width, 1)
         val safeHeight = max(height, 1)
 
@@ -34,7 +34,7 @@ object LinearClockBitmapGenerator {
         val colorRedLine = config.accentColor
         val colorBorder = config.textColor
 
-        // Paint setup
+        // Paint setup (Allocating here is necessary as Paint is not thread-safe)
         val paint = Paint().apply {
             isAntiAlias = true
         }
@@ -45,29 +45,24 @@ object LinearClockBitmapGenerator {
 
         // Adjust scale/density based on size mode
         val densityMultiplier = when (config.clockSize) {
-            LinearClockPrefs.SIZE_4x2 -> 2.0f // Double height, scale up slightly
-            LinearClockPrefs.SIZE_2x1 -> 0.8f // Compact width, scale down slightly? Or just fit.
+            LinearClockPrefs.SIZE_4x2 -> 2.0f
+            LinearClockPrefs.SIZE_2x1 -> 0.8f
             else -> 1.0f
         }
-        // Actually, height is passed in. If 4x2 is selected, height is ~160dp.
-        // We might want larger text/ticks for 4x2.
 
         // Time Window Logic
         val totalWindowHours = config.hoursToShow.coerceIn(4, 24)
         val windowDurationMinutes = totalWindowHours * 60
         // Prevent division by zero
-        val minutesPerPixel = if (safeWidth > 0) windowDurationMinutes.toFloat() / safeWidth else 1f
+        val minutesPerPixel = windowDurationMinutes.toFloat() / safeWidth.toFloat()
 
         val currentMinuteOfDay = currentTime.hour * 60 + currentTime.minute
 
-        val windowStartMinute: Int
-
-        if (totalWindowHours == 24) {
-             // Fixed 00:00 to 24:00
-             windowStartMinute = 0
+        val windowStartMinute: Int = if (totalWindowHours == 24) {
+             0 // Fixed 00:00 to 24:00
         } else {
              // Centered around now
-             windowStartMinute = currentMinuteOfDay - (windowDurationMinutes / 2)
+             currentMinuteOfDay - (windowDurationMinutes / 2)
         }
         val windowEndMinute = windowStartMinute + windowDurationMinutes
 
@@ -80,7 +75,6 @@ object LinearClockBitmapGenerator {
         }
 
         // 3. Draw Events
-        // Events are filtered in Widget before calling this if showEvents is false.
         events.forEach { event ->
             val startMin = event.start.hour * 60 + event.start.minute
             val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
@@ -97,18 +91,17 @@ object LinearClockBitmapGenerator {
                 val right = (eventStartPx + eventWidthPx).coerceAtMost(safeWidth.toFloat())
 
                 // Draw bar. Adjust height based on available height.
-                // Leave 20% top/bottom padding
                 canvas.drawRect(left, safeHeight * 0.2f, right, safeHeight * 0.8f, paint)
 
                 paint.alpha = 255
             }
         }
 
-        // 4. Draw Hour Ticks and Text
+        // 4. Draw Hour Ticks
         paint.color = colorBorder
         paint.strokeWidth = 2f * if(densityMultiplier > 1.5) 1.5f else 1f
         paint.textSize = 24f * config.scale * densityMultiplier
-        // Fallback font handling
+
         try {
              paint.typeface = Typeface.create(config.font, Typeface.BOLD)
         } catch (e: Exception) {
@@ -125,13 +118,8 @@ object LinearClockBitmapGenerator {
             val x = (hourMin - windowStartMinute) / minutesPerPixel
 
             if (x >= 0 && x <= safeWidth) {
-                // Draw Tick
-                // Longer tick for 4x2?
                 val tickHeight = safeHeight * 0.3f
                 canvas.drawLine(x, 0f, x, tickHeight, paint)
-
-                // Draw Text
-                // Text drawing removed as per user request (previous context, keeping it)
             }
         }
 
