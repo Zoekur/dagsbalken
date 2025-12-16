@@ -40,6 +40,7 @@ import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
+import android.util.Log
 
 import com.dagsbalken.app.widget.LinearClockBitmapGenerator
 
@@ -60,27 +61,45 @@ object LinearClockWidget : GlanceAppWidget() {
         val calendarRepo = CalendarRepository(context)
 
         // Hämta event (detta sker vid uppdatering)
-        val events = calendarRepo.getEventsForToday()
+        // Wrappar i try-catch för att undvika krasch om rättigheter saknas
+        val events = try {
+            calendarRepo.getEventsForToday()
+        } catch (e: Exception) {
+            Log.e("LinearClockWidget", "Failed to load events", e)
+            emptyList<DayEvent>()
+        }
 
         provideContent {
-            val weatherData by weatherRepo.weatherDataFlow.collectAsState(initial = null)
-            val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
+            // Fånga eventuella fel i composition
+            try {
+                val weatherData by weatherRepo.weatherDataFlow.collectAsState(initial = null)
+                val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
 
-            val config = WidgetConfig(
-                font = prefs[LinearClockPrefs.FONT_FAMILY] ?: LinearClockPrefs.DEF_FONT,
-                scale = prefs[LinearClockPrefs.FONT_SCALE] ?: LinearClockPrefs.DEF_SCALE,
-                backgroundColor = prefs[LinearClockPrefs.COLOR_BG] ?: LinearClockPrefs.DEF_BG,
-                textColor = prefs[LinearClockPrefs.COLOR_TEXT] ?: LinearClockPrefs.DEF_TEXT,
-                accentColor = prefs[LinearClockPrefs.COLOR_ACCENT] ?: LinearClockPrefs.DEF_ACCENT,
-                hoursToShow = prefs[LinearClockPrefs.HOURS_TO_SHOW] ?: LinearClockPrefs.DEF_HOURS_TO_SHOW,
-                showClock = prefs[LinearClockPrefs.SHOW_CLOCK] ?: LinearClockPrefs.DEF_SHOW_CLOCK,
-                showEvents = prefs[LinearClockPrefs.SHOW_EVENTS] ?: LinearClockPrefs.DEF_SHOW_EVENTS,
-                showWeather = prefs[LinearClockPrefs.SHOW_WEATHER] ?: LinearClockPrefs.DEF_SHOW_WEATHER,
-                showClothing = prefs[LinearClockPrefs.SHOW_CLOTHING] ?: LinearClockPrefs.DEF_SHOW_CLOTHING,
-                clockSize = prefs[LinearClockPrefs.CLOCK_SIZE] ?: LinearClockPrefs.DEF_CLOCK_SIZE
-            )
+                val config = WidgetConfig(
+                    font = prefs[LinearClockPrefs.FONT_FAMILY] ?: LinearClockPrefs.DEF_FONT,
+                    scale = prefs[LinearClockPrefs.FONT_SCALE] ?: LinearClockPrefs.DEF_SCALE,
+                    backgroundColor = prefs[LinearClockPrefs.COLOR_BG] ?: LinearClockPrefs.DEF_BG,
+                    textColor = prefs[LinearClockPrefs.COLOR_TEXT] ?: LinearClockPrefs.DEF_TEXT,
+                    accentColor = prefs[LinearClockPrefs.COLOR_ACCENT] ?: LinearClockPrefs.DEF_ACCENT,
+                    hoursToShow = prefs[LinearClockPrefs.HOURS_TO_SHOW] ?: LinearClockPrefs.DEF_HOURS_TO_SHOW,
+                    showClock = prefs[LinearClockPrefs.SHOW_CLOCK] ?: LinearClockPrefs.DEF_SHOW_CLOCK,
+                    showEvents = prefs[LinearClockPrefs.SHOW_EVENTS] ?: LinearClockPrefs.DEF_SHOW_EVENTS,
+                    showWeather = prefs[LinearClockPrefs.SHOW_WEATHER] ?: LinearClockPrefs.DEF_SHOW_WEATHER,
+                    showClothing = prefs[LinearClockPrefs.SHOW_CLOTHING] ?: LinearClockPrefs.DEF_SHOW_CLOTHING,
+                    clockSize = prefs[LinearClockPrefs.CLOCK_SIZE] ?: LinearClockPrefs.DEF_CLOCK_SIZE
+                )
 
-            LinearClockWidgetContent(weatherData, events, config)
+                LinearClockWidgetContent(weatherData, events, config)
+            } catch (e: Exception) {
+                Log.e("LinearClockWidget", "Composition error", e)
+                // Fallback UI
+                Box(
+                    modifier = GlanceModifier.fillMaxSize().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Widget Error")
+                }
+            }
         }
     }
 }
@@ -125,20 +144,30 @@ private fun LinearClockWidgetContent(
                 // Passing empty list is easiest if we want to hide them.
                 val eventsToShow = if (config.showEvents) events else emptyList()
 
-                val bitmap = LinearClockBitmapGenerator.generate(
-                    context = context,
-                    width = widthPx,
-                    height = heightPx,
-                    events = eventsToShow,
-                    config = config,
-                    currentTime = LocalTime.now()
-                )
+                // Safe generation
+                val bitmap = try {
+                    LinearClockBitmapGenerator.generate(
+                        context = context,
+                        width = widthPx,
+                        height = heightPx,
+                        events = eventsToShow,
+                        config = config,
+                        currentTime = LocalTime.now()
+                    )
+                } catch (e: Exception) {
+                    Log.e("LinearClockWidget", "Bitmap generation failed", e)
+                    null
+                }
 
-                Image(
-                    provider = ImageProvider(bitmap),
-                    contentDescription = "Linear Clock",
-                    modifier = GlanceModifier.fillMaxSize()
-                )
+                if (bitmap != null) {
+                    Image(
+                        provider = ImageProvider(bitmap),
+                        contentDescription = "Linear Clock",
+                        modifier = GlanceModifier.fillMaxSize()
+                    )
+                } else {
+                     Text("Clock Error")
+                }
             }
             Spacer(GlanceModifier.height(8.dp))
         }
@@ -182,4 +211,3 @@ private fun LinearClockWidgetContent(
         }
     }
 }
-

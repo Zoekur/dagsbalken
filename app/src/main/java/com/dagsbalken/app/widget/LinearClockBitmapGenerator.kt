@@ -9,6 +9,7 @@ import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
+import kotlin.math.max
 
 object LinearClockBitmapGenerator {
 
@@ -20,7 +21,11 @@ object LinearClockBitmapGenerator {
         config: WidgetConfig,
         currentTime: LocalTime = LocalTime.now()
     ): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        // Ensure valid dimensions
+        val safeWidth = max(width, 1)
+        val safeHeight = max(height, 1)
+
+        val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
         // Colors from config
@@ -36,7 +41,7 @@ object LinearClockBitmapGenerator {
 
         // 1. Draw Background (Future - Right Side)
         paint.color = colorFuture
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        canvas.drawRect(0f, 0f, safeWidth.toFloat(), safeHeight.toFloat(), paint)
 
         // Adjust scale/density based on size mode
         val densityMultiplier = when (config.clockSize) {
@@ -50,7 +55,8 @@ object LinearClockBitmapGenerator {
         // Time Window Logic
         val totalWindowHours = config.hoursToShow.coerceIn(4, 24)
         val windowDurationMinutes = totalWindowHours * 60
-        val minutesPerPixel = windowDurationMinutes.toFloat() / width
+        // Prevent division by zero
+        val minutesPerPixel = if (safeWidth > 0) windowDurationMinutes.toFloat() / safeWidth else 1f
 
         val currentMinuteOfDay = currentTime.hour * 60 + currentTime.minute
 
@@ -69,8 +75,8 @@ object LinearClockBitmapGenerator {
         val currentX = (currentMinuteOfDay - windowStartMinute) / minutesPerPixel
         if (currentX > 0) {
              paint.color = colorPassed
-             val passedWidth = currentX.coerceAtMost(width.toFloat())
-             canvas.drawRect(0f, 0f, passedWidth, height.toFloat(), paint)
+             val passedWidth = currentX.coerceAtMost(safeWidth.toFloat())
+             canvas.drawRect(0f, 0f, passedWidth, safeHeight.toFloat(), paint)
         }
 
         // 3. Draw Events
@@ -83,16 +89,16 @@ object LinearClockBitmapGenerator {
             val eventStartPx = (startMin - windowStartMinute) / minutesPerPixel
             val eventWidthPx = (actualEndMin - startMin) / minutesPerPixel
 
-            if (eventStartPx + eventWidthPx > 0 && eventStartPx < width) {
+            if (eventStartPx + eventWidthPx > 0 && eventStartPx < safeWidth) {
                 paint.color = event.color
                 paint.alpha = 150 // Slightly transparent
 
                 val left = eventStartPx.coerceAtLeast(0f)
-                val right = (eventStartPx + eventWidthPx).coerceAtMost(width.toFloat())
+                val right = (eventStartPx + eventWidthPx).coerceAtMost(safeWidth.toFloat())
 
                 // Draw bar. Adjust height based on available height.
                 // Leave 20% top/bottom padding
-                canvas.drawRect(left, height * 0.2f, right, height * 0.8f, paint)
+                canvas.drawRect(left, safeHeight * 0.2f, right, safeHeight * 0.8f, paint)
 
                 paint.alpha = 255
             }
@@ -102,7 +108,12 @@ object LinearClockBitmapGenerator {
         paint.color = colorBorder
         paint.strokeWidth = 2f * if(densityMultiplier > 1.5) 1.5f else 1f
         paint.textSize = 24f * config.scale * densityMultiplier
-        paint.typeface = Typeface.create(config.font, Typeface.BOLD)
+        // Fallback font handling
+        try {
+             paint.typeface = Typeface.create(config.font, Typeface.BOLD)
+        } catch (e: Exception) {
+             paint.typeface = Typeface.DEFAULT_BOLD
+        }
         paint.textAlign = Paint.Align.CENTER
 
         // Find first visible hour
@@ -113,29 +124,29 @@ object LinearClockBitmapGenerator {
             val hourMin = h * 60
             val x = (hourMin - windowStartMinute) / minutesPerPixel
 
-            if (x >= 0 && x <= width) {
+            if (x >= 0 && x <= safeWidth) {
                 // Draw Tick
                 // Longer tick for 4x2?
-                val tickHeight = height * 0.3f
+                val tickHeight = safeHeight * 0.3f
                 canvas.drawLine(x, 0f, x, tickHeight, paint)
 
                 // Draw Text
-                // Text drawing removed as per user request
+                // Text drawing removed as per user request (previous context, keeping it)
             }
         }
 
         // 5. Draw Red Line (Current Time)
-        if (currentX >= 0 && currentX <= width) {
+        if (currentX >= 0 && currentX <= safeWidth) {
             paint.color = colorRedLine
             paint.strokeWidth = 4f * if(densityMultiplier > 1.5) 1.5f else 1f
-            canvas.drawLine(currentX, 0f, currentX, height.toFloat(), paint)
+            canvas.drawLine(currentX, 0f, currentX, safeHeight.toFloat(), paint)
         }
 
         // 6. Border
         paint.color = colorBorder
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 4f
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        canvas.drawRect(0f, 0f, safeWidth.toFloat(), safeHeight.toFloat(), paint)
         paint.style = Paint.Style.FILL // Reset
 
         return bitmap
