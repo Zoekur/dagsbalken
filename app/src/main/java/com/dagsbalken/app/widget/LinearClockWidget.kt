@@ -166,7 +166,7 @@ private fun LinearClockWidgetContent(
                         modifier = GlanceModifier.fillMaxSize()
                     )
                 } else {
-                     Text("Clock Error")
+                Text("Clock Error")
                 }
             }
             Spacer(GlanceModifier.height(8.dp))
