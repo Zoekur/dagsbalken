@@ -1,6 +1,7 @@
 package com.dagsbalken.core.data
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -12,9 +13,35 @@ import java.time.LocalDate
 
 private val Context.timerDataStore by preferencesDataStore(name = "timer_preferences")
 
+/**
+ * Repository for managing timer templates and active timers.
+ *
+ * This repository handles two distinct but related concepts:
+ *
+ * **Timer Templates** ([TimerModel]):
+ * - Reusable timer configurations that users can create and save
+ * - Define the name, duration, and color for a timer type
+ * - Serve as blueprints for creating active timer instances
+ * - Persist across app sessions and can be used multiple times
+ *
+ * **Active Timers** ([CustomBlock]):
+ * - Running timer instances created from timer templates (or manually)
+ * - Have specific start and end times, and are tied to a particular date
+ * - Displayed on the timeline as visual blocks
+ * - Can be started from a template or created ad-hoc
+ *
+ * **Relationship**:
+ * When a user starts a timer from a template, the template's properties (name, duration, color)
+ * are used to create a new [CustomBlock] with calculated start/end times. The template remains
+ * unchanged and can be reused to create additional active timer instances.
+ *
+ * Both timer templates and active timers are stored in the same DataStore but under different
+ * keys to maintain separation of concerns.
+ */
 class TimerRepository(private val context: Context) {
 
     companion object {
+        private const val TAG = "TimerRepository"
         private val TIMER_TEMPLATES_KEY = stringPreferencesKey("timer_templates")
         private val ACTIVE_TIMERS_KEY = stringPreferencesKey("active_timers")
     }
@@ -80,7 +107,8 @@ class TimerRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to deserialize timer templates. Data may be corrupt. Returning empty list.", e)
+            Log.e(TAG, "Corrupted JSON data: $jsonString")
         }
         return list
     }
@@ -148,7 +176,8 @@ class TimerRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to deserialize active timers. Data may be corrupt. Returning empty list.", e)
+            Log.e(TAG, "Corrupted JSON data: $jsonString")
         }
         return list
     }
