@@ -598,15 +598,22 @@ fun LinearDayCard(
 @Composable
 fun EventList(
     items: List<CustomBlock>,
-    now: LocalTime,
+    now: LocalDateTime,
     onAddEventClick: () -> Unit,
     onStartTimerClick: () -> Unit,
     onDeleteTimer: (String) -> Unit
 ) {
     val upcomingItems = remember(items, now) {
         items.filter {
-             val end = it.endTime
-             !end.isBefore(now.minusMinutes(1))
+             // Convert to LocalDateTime for proper cross-midnight comparison
+             // If endTime is before startTime, the event spans midnight
+             val itemEndDateTime = if (it.endTime.isBefore(it.startTime)) {
+                 LocalDateTime.of(it.date.plusDays(1), it.endTime)
+             } else {
+                 LocalDateTime.of(it.date, it.endTime)
+             }
+             val nowMinusOneMinute = now.minusMinutes(1)
+             !itemEndDateTime.isBefore(nowMinusOneMinute)
         }.sortedBy { it.startTime }
     }
 
