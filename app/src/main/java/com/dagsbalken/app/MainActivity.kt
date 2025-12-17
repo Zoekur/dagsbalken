@@ -341,15 +341,12 @@ fun LinearClockScreen(
             .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                // Use vertical scroll to allow content to push down
-                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // Logo/Title
+            // Logo/Title (fixed)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -363,7 +360,7 @@ fun LinearClockScreen(
                 )
             }
 
-            // 1. Tidslinjen
+            // 1. Tidslinjen (fixed)
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
@@ -373,59 +370,68 @@ fun LinearClockScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 2. Event/Timer Lista (ersätter NextEventCard)
-            EventList(
-                items = allItems,
-                now = now.toLocalTime(),
-                onAddEventClick = {
-                    val intent = Intent(Intent.ACTION_INSERT)
-                        .setData(CalendarContract.Events.CONTENT_URI)
-                    context.startActivity(intent)
-                },
-                onStartTimerClick = {
-                    showTimerSheet = true
-                },
-                onDeleteTimer = { id ->
-                    scope.launch { timerRepository.removeActiveTimer(id) }
-                }
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            // 3. Väder- och Klädrådsrutor
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            // Scrollable content: EventList and Weather cards
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                WeatherInfoCard(
-                    modifier = Modifier.weight(1f),
-                    data = weatherData,
-                    onRefresh = {
-                        scope.launch {
-                            val success = weatherRepository.fetchAndSaveWeatherOnce()
-                            Toast.makeText(
-                                context,
-                                if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                // 2. Event/Timer Lista (ersätter NextEventCard)
+                EventList(
+                    items = allItems,
+                    now = now.toLocalTime(),
+                    onAddEventClick = {
+                        val intent = Intent(Intent.ACTION_INSERT)
+                            .setData(CalendarContract.Events.CONTENT_URI)
+                        context.startActivity(intent)
+                    },
+                    onStartTimerClick = {
+                        showTimerSheet = true
+                    },
+                    onDeleteTimer = { id ->
+                        scope.launch { timerRepository.removeActiveTimer(id) }
                     }
                 )
 
-                ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+                Spacer(Modifier.height(24.dp))
+
+                // 3. Väder- och Klädrådsrutor
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    WeatherInfoCard(
+                        modifier = Modifier.weight(1f),
+                        data = weatherData,
+                        onRefresh = {
+                            scope.launch {
+                                val success = weatherRepository.fetchAndSaveWeatherOnce()
+                                Toast.makeText(
+                                    context,
+                                    if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    )
+
+                    ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Version info
+                Text(
+                    text = "v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray.copy(alpha = 0.5f)
+                )
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Version info
-            Text(
-                text = "v${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray.copy(alpha = 0.5f)
-            )
         }
 
-        // Settings Icon
+        // Settings Icon (fixed)
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
