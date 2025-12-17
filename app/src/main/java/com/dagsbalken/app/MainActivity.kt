@@ -113,8 +113,9 @@ class MainActivity : ComponentActivity() {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val themePrefs = ThemePreferences(applicationContext)
+                val timerRepository = TimerRepository(applicationContext)
                 @Suppress("UNCHECKED_CAST")
-                return MainViewModel(themePrefs) as T
+                return MainViewModel(themePrefs, timerRepository) as T
             }
         }
     }
@@ -137,6 +138,7 @@ class MainActivity : ComponentActivity() {
                         composable("home") {
                             LinearClockScreen(
                                 themeOption = themeOption,
+                                timerRepository = viewModel.timerRepository,
                                 onThemeOptionChange = {
                                     viewModel.onThemeOptionChange(it)
                                 },
@@ -166,6 +168,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun LinearClockScreen(
     themeOption: ThemeOption,
+    timerRepository: TimerRepository,
     onThemeOptionChange: (ThemeOption) -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -173,7 +176,6 @@ fun LinearClockScreen(
     val scope = rememberCoroutineScope()
     val weatherRepository = remember { WeatherRepository(context) }
     val calendarRepository = remember { CalendarRepository(context) }
-    val timerRepository = remember { TimerRepository(context) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     val weatherData by weatherRepository.weatherDataFlow.collectAsState(initial = WeatherData())
@@ -252,10 +254,27 @@ fun LinearClockScreen(
     val now by rememberTicker1s()
 
     // --- Merge events and timers for display ---
-    // Filter activeTimers to only show those for today
+    // Filter activeTimers to only show those that are active today
+    // This includes timers that started yesterday but extend into today (cross-midnight)
     val today = remember(now) { LocalDate.now() }
     val todaysTimers = remember(activeTimers, today) {
-        activeTimers.filter { it.date == today }
+        activeTimers.mapNotNull { timer ->
+            when {
+                // 1. Timer starts today - show it as-is
+                timer.date == today -> timer
+                
+                // 2. Timer started yesterday and crosses midnight into today
+                timer.date == today.minusDays(1) && timer.endTime < timer.startTime -> {
+                    // Adjust display: show from 00:00 to the end time on the next day
+                    timer.copy(
+                        startTime = LocalTime.MIDNIGHT,
+                        date = today // Update to today's date for proper tracking
+                    )
+                }
+                
+                else -> null
+            }
+        }
     }
 
     val allItems = remember(calendarEvents, todaysTimers) {
@@ -341,15 +360,12 @@ fun LinearClockScreen(
             .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                // Use vertical scroll to allow content to push down
-                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // Logo/Title
+            // Logo/Title (fixed)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -363,7 +379,7 @@ fun LinearClockScreen(
                 )
             }
 
-            // 1. Tidslinjen
+            // 1. Tidslinjen (fixed)
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
@@ -373,59 +389,68 @@ fun LinearClockScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 2. Event/Timer Lista (ersätter NextEventCard)
-            EventList(
-                items = allItems,
-                now = now,
-                onAddEventClick = {
-                    val intent = Intent(Intent.ACTION_INSERT)
-                        .setData(CalendarContract.Events.CONTENT_URI)
-                    context.startActivity(intent)
-                },
-                onStartTimerClick = {
-                    showTimerSheet = true
-                },
-                onDeleteTimer = { id ->
-                    scope.launch { timerRepository.removeActiveTimer(id) }
-                }
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            // 3. Väder- och Klädrådsrutor
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            // Scrollable content: EventList and Weather cards
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                WeatherInfoCard(
-                    modifier = Modifier.weight(1f),
-                    data = weatherData,
-                    onRefresh = {
-                        scope.launch {
-                            val success = weatherRepository.fetchAndSaveWeatherOnce()
-                            Toast.makeText(
-                                context,
-                                if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                // 2. Event/Timer Lista (ersätter NextEventCard)
+                EventList(
+                    items = allItems,
+                    now = now.toLocalTime(),
+                    onAddEventClick = {
+                        val intent = Intent(Intent.ACTION_INSERT)
+                            .setData(CalendarContract.Events.CONTENT_URI)
+                        context.startActivity(intent)
+                    },
+                    onStartTimerClick = {
+                        showTimerSheet = true
+                    },
+                    onDeleteTimer = { id ->
+                        scope.launch { timerRepository.removeActiveTimer(id) }
                     }
                 )
 
-                ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+                Spacer(Modifier.height(24.dp))
+
+                // 3. Väder- och Klädrådsrutor
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    WeatherInfoCard(
+                        modifier = Modifier.weight(1f),
+                        data = weatherData,
+                        onRefresh = {
+                            scope.launch {
+                                val success = weatherRepository.fetchAndSaveWeatherOnce()
+                                Toast.makeText(
+                                    context,
+                                    if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    )
+
+                    ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Version info
+                Text(
+                    text = "v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray.copy(alpha = 0.5f)
+                )
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Version info
-            Text(
-                text = "v${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray.copy(alpha = 0.5f)
-            )
         }
 
-        // Settings Icon
+        // Settings Icon (fixed)
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -476,6 +501,9 @@ fun LinearDayCard(
                     val width = size.width
                     val heightPx = size.height
                     val cornerRadiusPx = cornerRadiusDp.toPx()
+                    
+                    // Constants for timeline calculations
+                    val minutesPerDay = 24 * 60 // 1440 minutes in a day
 
                     val gradientBrush = Brush.horizontalGradient(
                         0.0f to themeOption.timelineNightColor,
@@ -485,7 +513,7 @@ fun LinearDayCard(
                         endX = width
                     )
 
-                    val pxPerMin = width / (24 * 60)
+                    val pxPerMin = width / minutesPerDay
 
                     onDrawBehind {
                         val currentMinutes = now.hour * 60 + now.minute
@@ -503,7 +531,20 @@ fun LinearDayCard(
                             val item = items[i]
                             val startMin = item.startTime.hour * 60 + item.startTime.minute
                             val endMin = item.endTime.hour * 60 + item.endTime.minute
-                            val actualEndMin = if (endMin > startMin) endMin else startMin + 60
+                            
+                            // Handle cross-midnight timers properly:
+                            // If endMin < startMin, the timer crosses midnight
+                            // - On start date: show from startTime to end of day (24:00 = 1440 min)
+                            // - On next date: show from midnight (0) to endTime (already adjusted in todaysTimers)
+                            val actualEndMin = if (endMin > startMin) {
+                                endMin
+                            } else if (item.startTime == LocalTime.MIDNIGHT) {
+                                // This is a cross-midnight timer shown on the next day (already adjusted)
+                                endMin
+                            } else {
+                                // This is a cross-midnight timer on its start date - extend to end of day
+                                24 * 60
+                            }
 
                             val eventStartPx = startMin * pxPerMin
                             val eventWidthPx = (actualEndMin - startMin) * pxPerMin
