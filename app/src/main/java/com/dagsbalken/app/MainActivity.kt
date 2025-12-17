@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -390,10 +391,12 @@ fun LinearClockScreen(
             }
 
             // 1. Tidslinjen
+            // Optimization: Memoize the unwrapped list to prevent list creation on every tick
+            val unwrappedItems = remember(allItems) { allItems.map { it.block } }
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
-                items = allItems.map { it.block }, // Unwrap for drawing component
+                items = unwrappedItems,
                 themeOption = themeOption
             )
 
@@ -656,13 +659,12 @@ fun EventList(
         } else {
             upcomingItems.forEach { item ->
                 key(item.block.id) {
-                    // Stable callback for deletion
+                    // Stable callback for deletion, remembered inside key for correct scope
                     val onDeleteClick = remember(item.block.id, onDeleteTimer) {
                         if (item.block.type == BlockType.TIMER) {
                             { onDeleteTimer(item.block.id) }
                         } else null
                     }
-                    
                     EventListItem(item = item, onDelete = onDeleteClick)
                 }
             }
