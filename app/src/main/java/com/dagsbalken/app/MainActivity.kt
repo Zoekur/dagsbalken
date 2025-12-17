@@ -83,6 +83,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.dagsbalken.app.ui.MainViewModel
+import com.dagsbalken.app.ui.UiCustomBlock
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.settings.SettingsScreen
 import com.dagsbalken.app.ui.settings.ThemePreferences
@@ -254,7 +255,9 @@ fun LinearClockScreen(
     // --- Merge events and timers for display ---
     // Filter activeTimers to only show those that are active today
     // This includes timers that started yesterday but extend into today (cross-midnight)
-    val today = remember(now) { LocalDate.now() }
+    // Optimization: Use epochDay to keep 'today' stable for 24 hours, preventing unnecessary recompositions
+    val currentEpochDay = now.toLocalDate().toEpochDay()
+    val today = remember(currentEpochDay) { LocalDate.ofEpochDay(currentEpochDay) }
     val todaysTimers = remember(activeTimers, today) {
         activeTimers.mapNotNull { timer ->
             when {
@@ -287,12 +290,18 @@ fun LinearClockScreen(
                 color = it.color
             )
         }
-        (convertedEvents + todaysTimers).sortedBy { it.startTime }
+        // Wrap in UiCustomBlock to ensure stability
+        (convertedEvents + todaysTimers).sortedBy { it.startTime }.map { UiCustomBlock(it) }
     }
 
     // --- Timer Selection Sheet ---
     var showTimerSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+
+    // Stable lambda for deletion
+    val onDeleteTimerLambda = remember(scope, timerRepository) {
+        { id: String -> scope.launch { timerRepository.removeActiveTimer(id) } }
+    }
 
     if (showTimerSheet) {
         ModalBottomSheet(
@@ -384,7 +393,7 @@ fun LinearClockScreen(
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
-                items = allItems,
+                items = allItems.map { it.block }, // Unwrap for drawing component
                 themeOption = themeOption
             )
 
@@ -402,9 +411,7 @@ fun LinearClockScreen(
                 onStartTimerClick = {
                     showTimerSheet = true
                 },
-                onDeleteTimer = { id ->
-                    scope.launch { timerRepository.removeActiveTimer(id) }
-                }
+                onDeleteTimer = onDeleteTimerLambda
             )
 
             Spacer(Modifier.height(24.dp))
@@ -588,7 +595,7 @@ fun LinearDayCard(
 // -------- EVENT LIST (Updated NextEventCard) --------
 @Composable
 fun EventList(
-    items: List<CustomBlock>,
+    items: List<UiCustomBlock>,
     now: LocalTime,
     onAddEventClick: () -> Unit,
     onStartTimerClick: () -> Unit,
@@ -596,9 +603,10 @@ fun EventList(
 ) {
     val upcomingItems = remember(items, now) {
         items.filter {
-             val end = it.endTime
+             val end = it.block.endTime
              !end.isBefore(now.minusMinutes(1))
-        }.sortedBy { it.startTime }
+        }
+        // Assuming input list is already sorted
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -647,14 +655,23 @@ fun EventList(
             }
         } else {
             upcomingItems.forEach { item ->
-                EventListItem(item = item, onDelete = if (item.type == BlockType.TIMER) { { onDeleteTimer(item.id) } } else null)
+                // Stable callback for deletion
+                val onDeleteClick = remember(item.block.id, onDeleteTimer) {
+                    if (item.block.type == BlockType.TIMER) {
+                        { onDeleteTimer(item.block.id) }
+                    } else null
+                }
+
+                key(item.block.id) {
+                    EventListItem(item = item, onDelete = onDeleteClick)
+                }
             }
         }
     }
 }
 
 @Composable
-fun EventListItem(item: CustomBlock, onDelete: (() -> Unit)? = null) {
+fun EventListItem(item: UiCustomBlock, onDelete: (() -> Unit)? = null) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -666,14 +683,14 @@ fun EventListItem(item: CustomBlock, onDelete: (() -> Unit)? = null) {
         Box(
              Modifier
                  .size(12.dp)
-                 .background(item.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary, CircleShape)
+                 .background(item.block.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary, CircleShape)
         )
         Spacer(Modifier.width(16.dp))
 
         Column(Modifier.weight(1f)) {
-            Text(item.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text(item.block.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
             Text(
-                text = "${item.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${item.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                text = "${item.block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${item.block.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
