@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,6 +53,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -91,6 +97,7 @@ fun TimerEditor(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var editingTimer by remember { mutableStateOf<TimerModel?>(null) }
+    var timerToDelete by remember { mutableStateOf<TimerModel?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -130,7 +137,7 @@ fun TimerEditor(
                             editingTimer = timer
                             showDialog = true
                         },
-                        onDelete = { onDeleteTimer(timer.id) }
+                        onDelete = { timerToDelete = timer }
                     )
                 }
             }
@@ -148,6 +155,29 @@ fun TimerEditor(
                     onUpdateTimer(timer)
                 }
                 showDialog = false
+            }
+        )
+    }
+
+    if (timerToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { timerToDelete = null },
+            title = { Text("Delete Timer") },
+            text = { Text("Are you sure you want to delete '${timerToDelete?.name}'?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        timerToDelete?.let { onDeleteTimer(it.id) }
+                        timerToDelete = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { timerToDelete = null }) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -206,9 +236,17 @@ fun TimerDialog(
     var minutes by remember { mutableStateOf(timer?.durationMinutes?.toString() ?: "15") }
     var selectedColor by remember { mutableStateOf(timer?.colorHex ?: Color.Blue.toArgb()) }
 
-    val colors = listOf(
-        Color.Blue, Color.Red, Color.Green, Color.Yellow, Color.Magenta, Color.Cyan,
-        Color(0xFFFFA500), Color(0xFF800080), Color(0xFF008080)
+    // Define colors with names for better accessibility
+    val colorOptions = listOf(
+        Color.Blue to "Blue",
+        Color.Red to "Red",
+        Color.Green to "Green",
+        Color.Yellow to "Yellow",
+        Color.Magenta to "Magenta",
+        Color.Cyan to "Cyan",
+        Color(0xFFFFA500) to "Orange",
+        Color(0xFF800080) to "Purple",
+        Color(0xFF008080) to "Teal"
     )
 
     Dialog(onDismissRequest = onDismiss) {
@@ -263,18 +301,24 @@ fun TimerDialog(
                      horizontalArrangement = Arrangement.spacedBy(8.dp),
                      verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    colors.forEach { color ->
+                    colorOptions.forEach { (color, colorName) ->
+                        val isSelected = selectedColor == color.toArgb()
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
                                 .background(color)
                                 .border(
-                                    width = if (selectedColor == color.toArgb()) 2.dp else 0.dp,
+                                    width = if (isSelected) 2.dp else 0.dp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     shape = CircleShape
                                 )
                                 .clickable { selectedColor = color.toArgb() }
+                                .semantics {
+                                    role = Role.RadioButton
+                                    selected = isSelected
+                                    contentDescription = "$colorName color"
+                                }
                         )
                     }
                 }
