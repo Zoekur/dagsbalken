@@ -39,11 +39,11 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
-      # FIX: Manual build command to replace "Autobuild"
+      # FIX: Clean build + No Daemon is required for CodeQL to capture the compilation
       - name: Build with Gradle
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug -x test
+          ./gradlew clean assembleDebug --no-daemon -x test
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
