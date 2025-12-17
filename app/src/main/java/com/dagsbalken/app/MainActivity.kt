@@ -113,8 +113,9 @@ class MainActivity : ComponentActivity() {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val themePrefs = ThemePreferences(applicationContext)
+                val timerRepository = TimerRepository(applicationContext)
                 @Suppress("UNCHECKED_CAST")
-                return MainViewModel(themePrefs) as T
+                return MainViewModel(themePrefs, timerRepository) as T
             }
         }
     }
@@ -137,6 +138,7 @@ class MainActivity : ComponentActivity() {
                         composable("home") {
                             LinearClockScreen(
                                 themeOption = themeOption,
+                                timerRepository = viewModel.timerRepository,
                                 onThemeOptionChange = {
                                     viewModel.onThemeOptionChange(it)
                                 },
@@ -166,6 +168,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun LinearClockScreen(
     themeOption: ThemeOption,
+    timerRepository: TimerRepository,
     onThemeOptionChange: (ThemeOption) -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -173,7 +176,6 @@ fun LinearClockScreen(
     val scope = rememberCoroutineScope()
     val weatherRepository = remember { WeatherRepository(context) }
     val calendarRepository = remember { CalendarRepository(context) }
-    val timerRepository = remember { TimerRepository(context) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     val weatherData by weatherRepository.weatherDataFlow.collectAsState(initial = WeatherData())
