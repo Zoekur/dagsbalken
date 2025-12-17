@@ -253,21 +253,40 @@ fun LinearClockScreen(
 
     // --- Merge events and timers for display ---
     // Filter activeTimers to only show those that are active today
-    // This includes timers that started yesterday but extend into today (cross-midnight)
+    // This includes timers that started in the past but extend into today (cross-midnight or multi-day)
     val today = remember(now) { LocalDate.now() }
-    val todaysTimers = remember(activeTimers, today) {
+    val currentDateTime = remember(now) { 
+        java.time.LocalDateTime.of(today, now.toLocalTime()) 
+    }
+    val todaysTimers = remember(activeTimers, today, currentDateTime) {
         activeTimers.mapNotNull { timer ->
             when {
                 // 1. Timer starts today - show it as-is
                 timer.date == today -> timer
                 
-                // 2. Timer started yesterday and crosses midnight into today
-                timer.date == today.minusDays(1) && timer.endTime < timer.startTime -> {
-                    // Adjust display: show from 00:00 to the end time on the next day
-                    timer.copy(
-                        startTime = LocalTime.MIDNIGHT,
-                        date = today // Update to today's date for proper tracking
-                    )
+                // 2. Timer started in the past - check if it's still active
+                timer.date.isBefore(today) -> {
+                    // Calculate the actual end date/time
+                    val timerStartDateTime = java.time.LocalDateTime.of(timer.date, timer.startTime)
+                    val timerEndDateTime = if (timer.endTime < timer.startTime) {
+                        // Timer crosses midnight, end is on the next day
+                        java.time.LocalDateTime.of(timer.date.plusDays(1), timer.endTime)
+                    } else {
+                        // Timer ends on the same day
+                        java.time.LocalDateTime.of(timer.date, timer.endTime)
+                    }
+                    
+                    // Check if the timer is still active (end time hasn't passed yet)
+                    if (timerEndDateTime.isAfter(currentDateTime)) {
+                        // Timer is still active, show it from midnight to end time
+                        timer.copy(
+                            startTime = LocalTime.MIDNIGHT,
+                            date = today
+                        )
+                    } else {
+                        // Timer has expired
+                        null
+                    }
                 }
                 
                 else -> null
