@@ -1,5 +1,6 @@
 package com.dagsbalken.core.data
 
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
@@ -11,6 +12,7 @@ data class CustomBlock(
     val title: String,
     val startTime: LocalTime,
     val endTime: LocalTime,
+    val date: LocalDate = LocalDate.now(), // Added date to handle one-off timers
     val type: BlockType = BlockType.TIMER,
     val color: Int? = null
 )
@@ -19,4 +21,3 @@ enum class BlockType {
     TIMER,
     EVENT
 }
-
