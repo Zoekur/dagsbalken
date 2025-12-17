@@ -476,6 +476,9 @@ fun LinearDayCard(
                     val width = size.width
                     val heightPx = size.height
                     val cornerRadiusPx = cornerRadiusDp.toPx()
+                    
+                    // Constants for timeline calculations
+                    val minutesPerDay = 24 * 60 // 1440 minutes in a day
 
                     val gradientBrush = Brush.horizontalGradient(
                         0.0f to themeOption.timelineNightColor,
@@ -485,7 +488,7 @@ fun LinearDayCard(
                         endX = width
                     )
 
-                    val pxPerMin = width / (24 * 60)
+                    val pxPerMin = width / minutesPerDay
 
                     onDrawBehind {
                         val currentMinutes = now.hour * 60 + now.minute
@@ -505,12 +508,13 @@ fun LinearDayCard(
                             val endMin = item.endTime.hour * 60 + item.endTime.minute
                             
                             // Handle cross-midnight events (e.g., 23:30 to 00:30)
-                            // If endMin <= startMin, the event spans midnight
+                            // Note: This assumes events don't span more than 24 hours.
+                            // If endMin <= startMin, the event spans midnight.
                             val actualEndMin = if (endMin > startMin) {
                                 endMin
                             } else {
-                                // Add 24 hours (1440 minutes) to properly calculate duration
-                                endMin + (24 * 60)
+                                // Add one day's worth of minutes to properly calculate duration
+                                endMin + minutesPerDay
                             }
 
                             val eventStartPx = startMin * pxPerMin
