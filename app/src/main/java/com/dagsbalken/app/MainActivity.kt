@@ -390,10 +390,11 @@ fun LinearClockScreen(
             }
 
             // 1. Tidslinjen
+            val unwrappedItems = remember(allItems) { allItems.map { it.block } }
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
-                items = allItems.map { it.block }, // Unwrap for drawing component
+                items = unwrappedItems,
                 themeOption = themeOption
             )
 
