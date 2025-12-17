@@ -3,6 +3,7 @@ package com.dagsbalken.core.data
 import android.content.ContentUris
 import android.content.Context
 import android.provider.CalendarContract
+import android.util.Log
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -11,6 +12,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class CalendarRepository(private val context: Context) {
+    companion object {
+        private const val TAG = "CalendarRepository"
+    }
 
     suspend fun getEventsForToday(): List<DayEvent> = withContext(Dispatchers.IO) {
         // Kontrollera behörighet först
@@ -75,7 +79,7 @@ class CalendarRepository(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to query calendar events")
             // Returnera tom lista eller logga fel vid problem
         }
         events
