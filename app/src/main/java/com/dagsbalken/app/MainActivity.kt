@@ -252,10 +252,27 @@ fun LinearClockScreen(
     val now by rememberTicker1s()
 
     // --- Merge events and timers for display ---
-    // Filter activeTimers to only show those for today
+    // Filter activeTimers to only show those that are active today
+    // This includes timers that started yesterday but extend into today (cross-midnight)
     val today = remember(now) { LocalDate.now() }
     val todaysTimers = remember(activeTimers, today) {
-        activeTimers.filter { it.date == today }
+        activeTimers.mapNotNull { timer ->
+            when {
+                // 1. Timer starts today - show it as-is
+                timer.date == today -> timer
+                
+                // 2. Timer started yesterday and crosses midnight into today
+                timer.date == today.minusDays(1) && timer.endTime < timer.startTime -> {
+                    // Adjust display: show from 00:00 to the end time on the next day
+                    timer.copy(
+                        startTime = LocalTime.MIDNIGHT,
+                        date = today // Update to today's date for proper tracking
+                    )
+                }
+                
+                else -> null
+            }
+        }
     }
 
     val allItems = remember(calendarEvents, todaysTimers) {
@@ -503,7 +520,20 @@ fun LinearDayCard(
                             val item = items[i]
                             val startMin = item.startTime.hour * 60 + item.startTime.minute
                             val endMin = item.endTime.hour * 60 + item.endTime.minute
-                            val actualEndMin = if (endMin > startMin) endMin else startMin + 60
+                            
+                            // Handle cross-midnight timers properly:
+                            // If endMin < startMin, the timer crosses midnight
+                            // - On start date: show from startTime to end of day (24:00 = 1440 min)
+                            // - On next date: show from midnight (0) to endTime (already adjusted in todaysTimers)
+                            val actualEndMin = if (endMin > startMin) {
+                                endMin
+                            } else if (item.startTime == LocalTime.MIDNIGHT) {
+                                // This is a cross-midnight timer shown on the next day (already adjusted)
+                                endMin
+                            } else {
+                                // This is a cross-midnight timer on its start date - extend to end of day
+                                24 * 60
+                            }
 
                             val eventStartPx = startMin * pxPerMin
                             val eventWidthPx = (actualEndMin - startMin) * pxPerMin
