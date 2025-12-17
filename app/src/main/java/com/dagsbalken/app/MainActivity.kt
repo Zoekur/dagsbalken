@@ -493,6 +493,9 @@ fun LinearDayCard(
                     val width = size.width
                     val heightPx = size.height
                     val cornerRadiusPx = cornerRadiusDp.toPx()
+                    
+                    // Constants for timeline calculations
+                    val minutesPerDay = 24 * 60 // 1440 minutes in a day
 
                     val gradientBrush = Brush.horizontalGradient(
                         0.0f to themeOption.timelineNightColor,
@@ -502,7 +505,7 @@ fun LinearDayCard(
                         endX = width
                     )
 
-                    val pxPerMin = width / (24 * 60)
+                    val pxPerMin = width / minutesPerDay
 
                     onDrawBehind {
                         val currentMinutes = now.hour * 60 + now.minute
