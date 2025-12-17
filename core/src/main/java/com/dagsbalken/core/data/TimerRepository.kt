@@ -1,6 +1,7 @@
 package com.dagsbalken.core.data
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -15,6 +16,7 @@ private val Context.timerDataStore by preferencesDataStore(name = "timer_prefere
 class TimerRepository(private val context: Context) {
 
     companion object {
+        private const val TAG = "TimerRepository"
         private val TIMER_TEMPLATES_KEY = stringPreferencesKey("timer_templates")
         private val ACTIVE_TIMERS_KEY = stringPreferencesKey("active_timers")
     }
@@ -80,7 +82,7 @@ class TimerRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to deserialize timer templates")
         }
         return list
     }
@@ -148,7 +150,7 @@ class TimerRepository(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to deserialize active timers")
         }
         return list
     }
