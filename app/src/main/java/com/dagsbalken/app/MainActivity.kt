@@ -30,7 +30,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -425,7 +424,6 @@ fun LinearClockScreen(
             if (showTimers) {
                 TimerSection(
                     items = timerUiItems,
-                    now = now.toLocalTime(),
                     onStartTimerClick = { showTimerSheet = true },
                     onDeleteTimer = onDeleteTimerLambda
                 )
@@ -635,7 +633,7 @@ fun CalendarSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Kommande", style = MaterialTheme.typography.titleMedium)
+            Text("Kalenderhändelser", style = MaterialTheme.typography.titleMedium)
             // Add fallback button if list is not empty, so user can still add events
             if (upcomingItems.isNotEmpty()) {
                 IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
@@ -660,7 +658,6 @@ fun CalendarSection(
 @Composable
 fun TimerSection(
     items: List<UiCustomBlock>,
-    now: LocalTime,
     onStartTimerClick: () -> Unit,
     onDeleteTimer: (String) -> Unit
 ) {
@@ -682,7 +679,7 @@ fun TimerSection(
         }
 
         if (items.isEmpty()) {
-            EmptyStateCard(text = "Ingen timer", onClick = onStartTimerClick)
+            EmptyStateCard(text = "Inga timers", onClick = onStartTimerClick)
         } else {
             items.forEach { item ->
                 key(item.block.id) {
