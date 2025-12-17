@@ -50,6 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -253,7 +254,10 @@ fun LinearClockScreen(
 
     // --- Merge events and timers for display ---
     // Filter activeTimers to only show those for today
-    val today = remember(now) { LocalDate.now() }
+    // Use derivedStateOf to only recalculate when the date actually changes
+    val today by remember {
+        derivedStateOf { now.toLocalDate() }
+    }
     val todaysTimers = remember(activeTimers, today) {
         activeTimers.filter { it.date == today }
     }
