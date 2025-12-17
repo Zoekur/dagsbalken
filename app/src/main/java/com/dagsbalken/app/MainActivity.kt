@@ -3,8 +3,6 @@ package com.dagsbalken.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Paint
-import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.widget.Toast
@@ -13,11 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,21 +23,31 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,13 +58,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -70,7 +75,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
@@ -84,18 +88,23 @@ import com.dagsbalken.app.ui.settings.SettingsScreen
 import com.dagsbalken.app.ui.settings.ThemePreferences
 import com.dagsbalken.app.ui.theme.DagsbalkenTheme
 import com.dagsbalken.app.ui.theme.ThemeOption
-import com.dagsbalken.app.utils.blendColors
+import com.dagsbalken.core.data.BlockType
 import com.dagsbalken.core.data.CalendarRepository
+import com.dagsbalken.core.data.CustomBlock
 import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.data.TimerModel
+import com.dagsbalken.core.data.TimerRepository
 import com.dagsbalken.core.data.WeatherData
-import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.core.data.WeatherLocationSettings
+import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.core.workers.WeatherWorker
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import java.util.UUID
 
 // -------- HUVUDAKTIVITET --------
 class MainActivity : ComponentActivity() {
@@ -112,24 +121,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // We don't need edge-to-edge for this simple fullscreen style; let the system handle status bar.
-        // enableEdgeToEdge()
-        // Remove custom system bar handling so Android draws a normal status bar
-        // WindowCompat.setDecorFitsSystemWindows(window, false)
-        // WindowCompat.getInsetsController(window, window.decorView)?.let { controller ->
-        //     controller.show(WindowInsetsCompat.Type.statusBars())
-        //     controller.systemBarsBehavior =
-        //         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        // }
-
-        // Schemalägger väder-workern att starta så snart appen öppnas
         WeatherWorker.schedule(applicationContext)
 
         setContent {
             val themeOption by viewModel.themeOptionFlow.collectAsState(initial = ThemeOption.Cold)
 
             DagsbalkenTheme(themeOption = themeOption) {
-                // Flytta bakgrundsfärgen hit så vi inte får en separat "rand" i toppen
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -165,6 +162,7 @@ class MainActivity : ComponentActivity() {
 }
 
 // -------- SKÄRM (Kombinerar tidslinje & kort) --------
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LinearClockScreen(
     themeOption: ThemeOption,
@@ -175,13 +173,13 @@ fun LinearClockScreen(
     val scope = rememberCoroutineScope()
     val weatherRepository = remember { WeatherRepository(context) }
     val calendarRepository = remember { CalendarRepository(context) }
+    val timerRepository = remember { TimerRepository(context) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // Samlar in väderdata från DataStore i realtid
     val weatherData by weatherRepository.weatherDataFlow.collectAsState(initial = WeatherData())
-
-    // Events state
-    var events by remember { mutableStateOf(emptyList<DayEvent>()) }
+    var calendarEvents by remember { mutableStateOf(emptyList<DayEvent>()) }
+    val activeTimers by timerRepository.activeTimersFlow.collectAsState(initial = emptyList())
+    val timerTemplates by timerRepository.timerTemplatesFlow.collectAsState(initial = emptyList())
 
     // Funktion för att ladda events
     fun loadEvents() {
@@ -191,7 +189,7 @@ fun LinearClockScreen(
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             scope.launch {
-                events = calendarRepository.getEventsForToday()
+                calendarEvents = calendarRepository.getEventsForToday()
             }
         }
     }
@@ -200,40 +198,29 @@ fun LinearClockScreen(
     val multiplePermissionsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissionsMap ->
-        // Handle Calendar Permission
         if (permissionsMap[Manifest.permission.READ_CALENDAR] == true) {
             loadEvents()
         }
-
-        // Handle Location Permission
         if (permissionsMap[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissionsMap[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            // Permission granted, trigger fetch immediately
              scope.launch { weatherRepository.fetchAndSaveWeatherOnce() }
         }
     }
 
-    // --- New: observe location settings and request location permission if needed ---
     val locationSettings by weatherRepository.locationSettingsFlow.collectAsState(initial = WeatherLocationSettings())
 
-    // When the location setting changes, trigger an immediate fetch
     LaunchedEffect(locationSettings.useCurrentLocation, locationSettings.manualLocationName) {
         if (locationSettings.useCurrentLocation) {
-            // Ensure we have location permission before attempting a GPS-based fetch
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 weatherRepository.fetchAndSaveWeatherOnce()
             } else {
-                // Ask for permission (the permission result path will trigger fetch if granted)
                  multiplePermissionsLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
             }
         } else {
-            // Manual location selected -> fetch for manual name
             weatherRepository.fetchAndSaveWeatherOnce()
         }
     }
 
-
-    // Lyssna på Lifecycle ON_RESUME för att uppdatera events om användaren ändrat kalendern
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -246,45 +233,140 @@ fun LinearClockScreen(
         }
     }
 
-    // Initiera laddning vid start om permission finns, annars fråga
     LaunchedEffect(Unit) {
         val permissionsToRequest = mutableListOf<String>()
-
-        // Check Calendar
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             permissionsToRequest.add(Manifest.permission.READ_CALENDAR)
         }
-
-        // Check Location (Request on startup as per requirement)
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
              permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
              permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
-
         if (permissionsToRequest.isNotEmpty()) {
             multiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
             loadEvents()
-            // If location permission is already granted, we might want to refresh weather too if setting is enabled,
-            // but the locationSettings LaunchedEffect handles that separately.
         }
     }
 
     val now by rememberTicker1s()
 
+    // --- Merge events and timers for display ---
+    // Filter activeTimers to only show those that are active today
+    // This includes timers that started yesterday but extend into today (cross-midnight)
+    val today = remember(now) { LocalDate.now() }
+    val todaysTimers = remember(activeTimers, today) {
+        activeTimers.mapNotNull { timer ->
+            when {
+                // 1. Timer starts today - show it as-is
+                timer.date == today -> timer
+                
+                // 2. Timer started yesterday and crosses midnight into today
+                timer.date == today.minusDays(1) && timer.endTime < timer.startTime -> {
+                    // Adjust display: show from 00:00 to the end time on the next day
+                    timer.copy(
+                        startTime = LocalTime.MIDNIGHT,
+                        date = today // Update to today's date for proper tracking
+                    )
+                }
+                
+                else -> null
+            }
+        }
+    }
+
+    val allItems = remember(calendarEvents, todaysTimers) {
+        val convertedEvents = calendarEvents.map {
+            CustomBlock(
+                id = it.id,
+                title = it.title,
+                startTime = it.start,
+                endTime = it.end ?: it.start.plusHours(1),
+                date = today, // Calendar events loaded are for today
+                type = BlockType.EVENT,
+                color = it.color
+            )
+        }
+        (convertedEvents + todaysTimers).sortedBy { it.startTime }
+    }
+
+    // --- Timer Selection Sheet ---
+    var showTimerSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
+    if (showTimerSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showTimerSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Välj timer att starta", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(16.dp))
+                if (timerTemplates.isEmpty()) {
+                    Text("Inga timers skapade. Gå till inställningar för att skapa.", color = Color.Gray)
+                }
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(timerTemplates) { timer ->
+                        Card(
+                            onClick = {
+                                val startTime = LocalTime.now()
+                                val endTime = startTime.plusHours(timer.durationHours.toLong())
+                                    .plusMinutes(timer.durationMinutes.toLong())
+                                val block = CustomBlock(
+                                    title = timer.name,
+                                    startTime = startTime,
+                                    endTime = endTime,
+                                    date = LocalDate.now(), // Store today's date
+                                    type = BlockType.TIMER,
+                                    color = timer.colorHex
+                                )
+                                scope.launch {
+                                    timerRepository.addActiveTimer(block)
+                                    showTimerSheet = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(24.dp)
+                                        .background(Color(timer.colorHex), CircleShape)
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Column {
+                                    Text(timer.name, style = MaterialTheme.typography.titleMedium)
+                                    Text("${timer.durationHours}h ${timer.durationMinutes}m")
+                                }
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.PlayArrow, null)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+
     Box(
         Modifier
             .fillMaxSize()
-            // Ingen egen "panel"-bakgrund här; endast global Surface-bakgrund används
             .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                // Use vertical scroll to allow content to push down
+                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // Logo/Title placeholder (Top Left, separate from card)
+            // Logo/Title
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -302,20 +384,26 @@ fun LinearClockScreen(
             LinearDayCard(
                 now = now.toLocalTime(),
                 height = 168.dp,
-                events = events,
+                items = allItems,
                 themeOption = themeOption
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // 2. Nästa Händelse (Tilläggsinformation)
-            NextEventCard(
-                events = events,
+            // 2. Event/Timer Lista (ersätter NextEventCard)
+            EventList(
+                items = allItems,
                 now = now.toLocalTime(),
                 onAddEventClick = {
                     val intent = Intent(Intent.ACTION_INSERT)
                         .setData(CalendarContract.Events.CONTENT_URI)
                     context.startActivity(intent)
+                },
+                onStartTimerClick = {
+                    showTimerSheet = true
+                },
+                onDeleteTimer = { id ->
+                    scope.launch { timerRepository.removeActiveTimer(id) }
                 }
             )
 
@@ -334,7 +422,7 @@ fun LinearClockScreen(
                             val success = weatherRepository.fetchAndSaveWeatherOnce()
                             Toast.makeText(
                                 context,
-                                if (success) "Uppdaterat väder" else "Uppdatering misslyckades — fallback användes",
+                                if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -354,7 +442,7 @@ fun LinearClockScreen(
             )
         }
 
-        // Settings Icon (Floating TopEnd)
+        // Settings Icon
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -380,7 +468,7 @@ fun LinearClockScreen(
 fun LinearDayCard(
     now: LocalTime,
     height: Dp = 160.dp,
-    events: List<DayEvent> = emptyList(),
+    items: List<CustomBlock> = emptyList(),
     themeOption: ThemeOption
 ) {
     val cornerRadiusDp = 28.dp
@@ -397,7 +485,7 @@ fun LinearDayCard(
             .shadow(elevation = 8.dp, shape = RoundedCornerShape(cornerRadiusDp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(cornerRadiusDp))
     ) {
-        // Tidslinje med drawWithCache för att undvika objektallokeringar i draw-loopen (CodeQL fix)
+        // Tidslinje med drawWithCache
         Spacer(
             modifier = Modifier
                 .fillMaxSize()
@@ -405,11 +493,6 @@ fun LinearDayCard(
                     val width = size.width
                     val heightPx = size.height
                     val cornerRadiusPx = cornerRadiusDp.toPx()
-
-                    // Skapa Gradient Brush i cache-blocket (undviker allokering vid varje ritning)
-                    // We blend colors to create a smoother, non-linear transition
-                    val nightColor = themeOption.timelineNightColor
-                    val dayColor = themeOption.timelineDayColor
 
                     val gradientBrush = Brush.horizontalGradient(
                         0.0f to nightColor,
@@ -421,45 +504,46 @@ fun LinearDayCard(
                         endX = width
                     )
 
-                    // Förbereda Path objekt i cache-blocket
-                    val cardPath = androidx.compose.ui.graphics.Path()
-                    cardPath.addRoundRect(
-                        androidx.compose.ui.geometry.RoundRect(
-                            0f, 0f, width, heightPx,
-                            androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx)
-                        )
-                    )
-
-                    // Beräkna konstanter
                     val pxPerMin = width / (24 * 60)
 
                     onDrawBehind {
-                        // Nuvarande tid
                         val currentMinutes = now.hour * 60 + now.minute
                         val currentX = currentMinutes * pxPerMin
 
-                        // 1. Gradient Background (Endast passerad tid)
-                        // We can't use clipPath directly in this draw scope in all versions,
-                        // so we simply draw the gradient rect from the left up to currentX,
-                        // relying on the parent RoundedCornerShape background to visually clip.
+                        // 1. Gradient Background
                         drawRect(
                             brush = gradientBrush,
                             topLeft = Offset.Zero,
                             size = Size(currentX.coerceIn(0f, width), heightPx)
                         )
 
-                        // 2. Rita events (Använd index-loop för att undvika iterator-allokering)
-                        for (i in events.indices) {
-                            val event = events[i]
-                            val startMin = event.start.hour * 60 + event.start.minute
-                            val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
-                            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
+                        // 2. Rita events/timers
+                        for (i in items.indices) {
+                            val item = items[i]
+                            val startMin = item.startTime.hour * 60 + item.startTime.minute
+                            val endMin = item.endTime.hour * 60 + item.endTime.minute
+                            
+                            // Handle cross-midnight timers properly:
+                            // If endMin < startMin, the timer crosses midnight
+                            // - On start date: show from startTime to end of day (24:00 = 1440 min)
+                            // - On next date: show from midnight (0) to endTime (already adjusted in todaysTimers)
+                            val actualEndMin = if (endMin > startMin) {
+                                endMin
+                            } else if (item.startTime == LocalTime.MIDNIGHT) {
+                                // This is a cross-midnight timer shown on the next day (already adjusted)
+                                endMin
+                            } else {
+                                // This is a cross-midnight timer on its start date - extend to end of day
+                                24 * 60
+                            }
 
                             val eventStartPx = startMin * pxPerMin
                             val eventWidthPx = (actualEndMin - startMin) * pxPerMin
 
+                            val color = item.color?.let { Color(it) } ?: Color.Gray
+
                             drawRect(
-                                color = Color(event.color).copy(alpha = 0.3f),
+                                color = color.copy(alpha = 0.3f),
                                 topLeft = Offset(eventStartPx, 0f),
                                 size = Size(eventWidthPx, heightPx)
                             )
@@ -487,7 +571,7 @@ fun LinearDayCard(
                             )
                         }
 
-                        // 4. Nu-markör (röd linje)
+                        // 4. Nu-markör
                         drawLine(
                             color = nowColor,
                             start = Offset(currentX, 0f),
@@ -501,76 +585,110 @@ fun LinearDayCard(
     }
 }
 
-// -------- NÄSTA HÄNDELSE --------
+// -------- EVENT LIST (Updated NextEventCard) --------
 @Composable
-fun NextEventCard(events: List<DayEvent>, now: LocalTime, onAddEventClick: () -> Unit) {
-    val sortedEvents = remember(events) { events.sortedBy { it.start } }
-    val next = remember(sortedEvents, now) {
-        // Hitta nästa händelse som inte har passerat (minus 1 minut för att hantera tickern)
-        sortedEvents.firstOrNull { !it.start.isBefore(now.minusMinutes(1)) }
+fun EventList(
+    items: List<CustomBlock>,
+    now: LocalTime,
+    onAddEventClick: () -> Unit,
+    onStartTimerClick: () -> Unit,
+    onDeleteTimer: (String) -> Unit
+) {
+    val upcomingItems = remember(items, now) {
+        items.filter {
+             val end = it.endTime
+             !end.isBefore(now.minusMinutes(1))
+        }.sortedBy { it.startTime }
     }
 
-    if (next == null) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Header / Action buttons
         Row(
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                .innerShadow(
-                    color = Color.Black.copy(alpha = 0.2f),
-                    blur = 6.dp,
-                    offsetY = 2.dp,
-                    offsetX = 2.dp,
-                    cornerRadius = 16.dp
-                )
-                .clip(RoundedCornerShape(16.dp))
-                .clickable(
-                    onClick = onAddEventClick,
-                    role = androidx.compose.ui.semantics.Role.Button,
-                    onClickLabel = "Lägg till event"
-                )
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                "Inget planerat",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    } else {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                .padding(16.dp),
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(next.icon ?: "•", fontSize = 22.sp, modifier = Modifier.padding(end = 8.dp))
-            Column {
-                Text(next.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text("Kommande", style = MaterialTheme.typography.titleMedium)
+            Row {
+                TextButton(onClick = onStartTimerClick) {
+                    Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Starta Timer")
+                }
+                TextButton(onClick = onAddEventClick) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Kalender")
+                }
+            }
+        }
+
+        if (upcomingItems.isEmpty()) {
+            // Empty State
+             Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .innerShadow(
+                        color = Color.Black.copy(alpha = 0.1f),
+                        blur = 6.dp,
+                        offsetY = 2.dp,
+                        offsetX = 2.dp,
+                        cornerRadius = 16.dp
+                    )
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "${next.start.format(DateTimeFormatter.ofPattern("HH:mm"))}${
-                        next.end?.let {
-                            " – ${it.format(DateTimeFormatter.ofPattern("HH:mm"))}"
-                        } ?: ""
-                    }",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp
+                    "Inget planerat",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        } else {
+            upcomingItems.forEach { item ->
+                EventListItem(item = item, onDelete = if (item.type == BlockType.TIMER) { { onDeleteTimer(item.id) } } else null)
+            }
+        }
+    }
+}
+
+@Composable
+fun EventListItem(item: CustomBlock, onDelete: (() -> Unit)? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icon / Dot
+        Box(
+             Modifier
+                 .size(12.dp)
+                 .background(item.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary, CircleShape)
+        )
+        Spacer(Modifier.width(16.dp))
+
+        Column(Modifier.weight(1f)) {
+            Text(item.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text(
+                text = "${item.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${item.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+        }
+
+        if (onDelete != null) {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Ta bort timer", tint = MaterialTheme.colorScheme.error)
             }
         }
     }
 }
 
 // ----------------------------------------------------------
-// 2. VÄDER-KOMPONENT (Uppdaterad för att ta emot data)
+// 2. VÄDER-KOMPONENT
 // ----------------------------------------------------------
 
 @Composable
@@ -588,23 +706,20 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
             contentAlignment = Alignment.Center
         ) {
             if (!data.isDataLoaded) {
-                // Laddningsindikator
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     Spacer(Modifier.height(8.dp))
                     Text("Laddar väderdata...", fontSize = 14.sp, color = Color.Gray)
                 }
             } else {
-                // Visar riktig data
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Show location name as title (fallback to generic label)
                     val title = if (data.locationName.isNotBlank()) data.locationName else "Väderinformation"
                     Text(
                         title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                         textAlign = TextAlign.Center
                     )
-                    // Show provider small label
                     if (data.provider.isNotBlank()) {
                         Text(
                             text = data.provider,
@@ -622,12 +737,12 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
                     Text(
                         "${data.precipitationChance}% risk för nederbörd",
                         fontSize = 16.sp,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
                     )
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Last updated row (click to refresh)
                     val lastUpdatedText = if (data.lastUpdatedMillis > 0L) {
                         try {
                             val instant = java.time.Instant.ofEpochMilli(data.lastUpdatedMillis)
@@ -652,7 +767,7 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
 }
 
 // ----------------------------------------------------------
-// 3. KLÄDRÅDS-KOMPONENT (Uppdaterad för att ta emot data)
+// 3. KLÄDRÅDS-KOMPONENT
 // ----------------------------------------------------------
 
 @Composable
@@ -670,7 +785,6 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
             contentAlignment = Alignment.Center
         ) {
             if (!data.isDataLoaded) {
-                // Laddningsindikator (synkroniserad med väderkortet)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(data.adviceIcon, fontSize = 48.sp)
                     Text(
@@ -681,7 +795,6 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
                     )
                 }
             } else {
-                // Visar klädråd baserat på logik i WeatherRepository
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "Klädråd",
@@ -704,13 +817,11 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
 
 // -------- HJÄLPARE --------
 
-// -------- ENKEL TICKER --------
 @Composable
 fun rememberTicker1s(): State<LocalDateTime> {
 	val state = remember { mutableStateOf(LocalDateTime.now()) }
 	LaunchedEffect(Unit) {
 		while (true) {
-			// Uppdatera varje minut (eller oftare vid behov, men minut räcker för UI)
 			state.value = LocalDateTime.now()
 			delay(60000)
 		}
@@ -718,7 +829,6 @@ fun rememberTicker1s(): State<LocalDateTime> {
 	return state
 }
 
-// -------- INNER SHADOW MODIFIER --------
 fun Modifier.innerShadow(
     color: Color,
     blur: Dp = 6.dp,

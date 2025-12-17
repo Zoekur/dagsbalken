@@ -40,37 +40,45 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.dagsbalken.core.data.TimerModel
+import com.dagsbalken.core.data.TimerRepository
+import kotlinx.coroutines.launch
 import java.util.UUID
-
-data class TimerModel(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val durationHours: Int,
-    val durationMinutes: Int,
-    val colorHex: Int
-)
 
 @Composable
 fun TimerEditor() {
-    var timers by remember { mutableStateOf(emptyList<TimerModel>()) }
+    val context = LocalContext.current
+    val timerRepository = remember { TimerRepository(context) }
+    val timers by timerRepository.timerTemplatesFlow.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+
     TimerEditor(
         timers = timers,
-        onAddTimer = { timers = timers + it },
-        onUpdateTimer = { updated -> timers = timers.map { if (it.id == updated.id) updated else it } },
-        onDeleteTimer = { id -> timers = timers.filter { it.id != id } }
+        onAddTimer = { timer ->
+            scope.launch { timerRepository.saveTimerTemplate(timer) }
+        },
+        onUpdateTimer = { timer ->
+            scope.launch { timerRepository.saveTimerTemplate(timer) }
+        },
+        onDeleteTimer = { id ->
+            scope.launch { timerRepository.deleteTimerTemplate(id) }
+        }
     )
 }
 
