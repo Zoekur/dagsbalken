@@ -15,19 +15,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,21 +40,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.dagsbalken.core.data.WeatherLocationSettings
-import com.dagsbalken.core.data.WeatherRepository
+import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.theme.ThemeOption
 import com.dagsbalken.app.ui.theme.ThemeSelector
-import kotlinx.coroutines.launch
+import com.dagsbalken.core.data.WeatherLocationSettings
+import com.dagsbalken.core.data.WeatherRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     currentTheme: ThemeOption,
     onThemeSelected: (ThemeOption) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: MainViewModel? = null // Passed to access visibility settings
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -65,6 +65,14 @@ fun SettingsScreen(
     val locationSettings by weatherRepository.locationSettingsFlow.collectAsState(initial = WeatherLocationSettings())
     val currentProvider by weatherRepository.providerFlow.collectAsState(initial = "Open-Meteo")
     var manualLocationText by rememberSaveable { mutableStateOf("") }
+
+    // Visibility States (if ViewModel is provided)
+    val showClock = viewModel?.showClockFlow?.collectAsState(initial = true)
+    val showEvents = viewModel?.showEventsFlow?.collectAsState(initial = true)
+    val showTimers = viewModel?.showTimersFlow?.collectAsState(initial = true)
+    val showWeather = viewModel?.showWeatherFlow?.collectAsState(initial = true)
+    val showClothing = viewModel?.showClothingFlow?.collectAsState(initial = true)
+
 
     LaunchedEffect(locationSettings.manualLocationName) {
         if (manualLocationText != locationSettings.manualLocationName) {
@@ -79,14 +87,10 @@ fun SettingsScreen(
             val granted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
                           permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
             if (granted) {
-                // If granted, we ensure the setting is set to true
                 scope.launch {
                     weatherRepository.saveLocationSettings(true, locationSettings.manualLocationName)
                 }
             } else {
-                // If denied, we might revert the toggle or just leave it.
-                // For better UX, we could show a snackbar, but let's stick to simple logic:
-                // If denied, we turn off "Use current location" to be consistent.
                 scope.launch {
                     weatherRepository.saveLocationSettings(false, locationSettings.manualLocationName)
                 }
@@ -120,6 +124,19 @@ fun SettingsScreen(
                 selectedOption = currentTheme,
                 onOptionSelected = onThemeSelected
             )
+
+            if (viewModel != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Visa på startsidan", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Toggles
+                SettingsToggle("Tidslinje", showClock?.value ?: true) { viewModel.setShowClock(it) }
+                SettingsToggle("Kalender (Events)", showEvents?.value ?: true) { viewModel.setShowEvents(it) }
+                SettingsToggle("Timers", showTimers?.value ?: true) { viewModel.setShowTimers(it) }
+                SettingsToggle("Väderkort", showWeather?.value ?: true) { viewModel.setShowWeather(it) }
+                SettingsToggle("Klädrådskort", showClothing?.value ?: true) { viewModel.setShowClothing(it) }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -182,13 +199,12 @@ fun SettingsScreen(
                 )
             }
 
-            // Manual Location Input (Visible if Current Location is OFF)
+            // Manual Location Input
             if (!locationSettings.useCurrentLocation) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 var suggestions by remember { mutableStateOf(emptyList<WeatherRepository.LocationSuggestion>()) }
                 var showSuggestions by remember { mutableStateOf(false) }
-                // Use a ref to hold the current search job to cancel it on new input
                 var searchJob by remember { mutableStateOf<Job?>(null) }
 
                 Column {
@@ -196,11 +212,10 @@ fun SettingsScreen(
                         value = manualLocationText,
                         onValueChange = { newName: String ->
                             manualLocationText = newName
-                            // Debounce logic
                             searchJob?.cancel()
                             searchJob = scope.launch {
                                 if (newName.length >= 2) {
-                                    delay(500) // Debounce 500ms
+                                    delay(500)
                                     suggestions = weatherRepository.searchLocations(newName)
                                     showSuggestions = suggestions.isNotEmpty()
                                 } else {
@@ -214,8 +229,6 @@ fun SettingsScreen(
                     )
 
                     if (showSuggestions) {
-                        // Using a simple column or Box for suggestions below the field
-                        // In a real app we might use ExposedDropdownMenuBox, but standard DropdownMenu works too
                         DropdownMenu(
                             expanded = showSuggestions,
                             onDismissRequest = { showSuggestions = false },
@@ -228,10 +241,8 @@ fun SettingsScreen(
                                         manualLocationText = suggestion.displayName()
                                         showSuggestions = false
                                         scope.launch {
-                                            // Cache coordinates so fetchWeather finds them
                                             weatherRepository.cacheManualLocation(suggestion.displayName(), suggestion.latitude, suggestion.longitude)
                                             weatherRepository.saveLocationSettings(false, suggestion.displayName())
-                                            // Trigger fetch
                                             weatherRepository.fetchAndSaveWeatherOnce()
                                         }
                                     }
@@ -244,7 +255,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Provider Info - dropdown
             Text("Välj väderleverantör", style = MaterialTheme.typography.titleSmall)
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -253,7 +263,7 @@ fun SettingsScreen(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "${currentProvider}",
+                    text = "$currentProvider",
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { expanded = true }
@@ -266,7 +276,6 @@ fun SettingsScreen(
                             expanded = false
                             scope.launch {
                                 weatherRepository.saveProvider(p)
-                                // trigger immediate fetch for new provider
                                 val success = weatherRepository.fetchAndSaveWeatherOnce()
                                 Toast.makeText(context, if (success) "Väder uppdaterat från $p" else "Uppdatering misslyckades, använder fallback", Toast.LENGTH_SHORT).show()
                             }
@@ -279,8 +288,21 @@ fun SettingsScreen(
 
             Text("Kalender", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            // Placeholder for Calendar Selection
             Text("Kalenderkälla: Enhetskalender", style = MaterialTheme.typography.bodyMedium)
         }
+    }
+}
+
+@Composable
+fun SettingsToggle(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = title, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
