@@ -84,6 +84,7 @@ import com.dagsbalken.app.ui.settings.SettingsScreen
 import com.dagsbalken.app.ui.settings.ThemePreferences
 import com.dagsbalken.app.ui.theme.DagsbalkenTheme
 import com.dagsbalken.app.ui.theme.ThemeOption
+import com.dagsbalken.app.utils.blendColors
 import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.data.WeatherData
@@ -406,10 +407,16 @@ fun LinearDayCard(
                     val cornerRadiusPx = cornerRadiusDp.toPx()
 
                     // Skapa Gradient Brush i cache-blocket (undviker allokering vid varje ritning)
+                    // We blend colors to create a smoother, non-linear transition
+                    val nightColor = themeOption.timelineNightColor
+                    val dayColor = themeOption.timelineDayColor
+
                     val gradientBrush = Brush.horizontalGradient(
-                        0.0f to themeOption.timelineNightColor,
-                        0.5f to themeOption.timelineDayColor,
-                        1.0f to themeOption.timelineNightColor,
+                        0.0f to nightColor,
+                        0.25f to blendColors(nightColor, dayColor, 0.4f),
+                        0.5f to dayColor,
+                        0.75f to blendColors(nightColor, dayColor, 0.4f),
+                        1.0f to nightColor,
                         startX = 0f,
                         endX = width
                     )
