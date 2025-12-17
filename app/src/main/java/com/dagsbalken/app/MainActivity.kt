@@ -655,14 +655,14 @@ fun EventList(
             }
         } else {
             upcomingItems.forEach { item ->
-                // Stable callback for deletion
-                val onDeleteClick = remember(item.block.id, onDeleteTimer) {
-                    if (item.block.type == BlockType.TIMER) {
-                        { onDeleteTimer(item.block.id) }
-                    } else null
-                }
-
                 key(item.block.id) {
+                    // Stable callback for deletion
+                    val onDeleteClick = remember(item.block.id, onDeleteTimer) {
+                        if (item.block.type == BlockType.TIMER) {
+                            { onDeleteTimer(item.block.id) }
+                        } else null
+                    }
+                    
                     EventListItem(item = item, onDelete = onDeleteClick)
                 }
             }
