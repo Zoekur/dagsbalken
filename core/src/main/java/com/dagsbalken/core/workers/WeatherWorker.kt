@@ -1,6 +1,7 @@
 package com.dagsbalken.core.workers
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -25,12 +26,13 @@ class WeatherWorker(
             repository.fetchAndSaveWeatherOnce()
             Result.success()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Weather worker update failed")
             Result.retry()
         }
     }
 
     companion object {
+        private const val TAG = "WeatherWorker"
         private const val UNIQUE_WORK_NAME = "weather_worker_periodic"
 
         fun schedule(context: Context) {

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -92,6 +93,7 @@ class WeatherRepository(private val context: Context) {
     private val httpClient: OkHttpClient by lazy { createHttpClient() }
 
     companion object {
+        private const val TAG = "WeatherRepository"
         private const val GEOCODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6h
         private const val CACHE_MAX_ENTRIES = 64
 
@@ -342,7 +344,7 @@ class WeatherRepository(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Search locations failed")
         }
         return suggestions
     }
@@ -533,7 +535,7 @@ class WeatherRepository(private val context: Context) {
                             }
                         }
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.e(TAG, "Forecast fetch failed attempt $attempt")
                         // retry
                     }
                     attempt++
