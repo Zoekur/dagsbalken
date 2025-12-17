@@ -1,5 +1,6 @@
 package com.dagsbalken.core.data
 
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
@@ -11,12 +12,35 @@ data class CustomBlock(
     val title: String,
     val startTime: LocalTime,
     val endTime: LocalTime,
+    val date: LocalDate,
     val type: BlockType = BlockType.TIMER,
     val color: Int? = null
-)
+) {
+    companion object {
+        /**
+         * Creates a CustomBlock with the current date.
+         * Use this factory function to ensure the date is evaluated at creation time, not at class definition time.
+         */
+        fun createForToday(
+            id: String = UUID.randomUUID().toString(),
+            title: String,
+            startTime: LocalTime,
+            endTime: LocalTime,
+            type: BlockType = BlockType.TIMER,
+            color: Int? = null
+        ): CustomBlock = CustomBlock(
+            id = id,
+            title = title,
+            startTime = startTime,
+            endTime = endTime,
+            date = LocalDate.now(),
+            type = type,
+            color = color
+        )
+    }
+}
 
 enum class BlockType {
     TIMER,
     EVENT
 }
-
