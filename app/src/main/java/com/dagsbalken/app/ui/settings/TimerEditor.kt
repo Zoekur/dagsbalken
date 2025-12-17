@@ -163,7 +163,12 @@ fun TimerEditor(
         AlertDialog(
             onDismissRequest = { timerToDelete = null },
             title = { Text("Delete Timer") },
-            text = { Text("Are you sure you want to delete '${timerToDelete?.name}'?") },
+            text = {
+                // Use safe let to ensure name is non-null for display
+                timerToDelete?.let { timer ->
+                    Text("Are you sure you want to delete '${timer.name}'?")
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
