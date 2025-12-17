@@ -18,7 +18,7 @@ import java.util.UUID
  * @property name Display name for the timer
  * @property durationHours Duration in hours (0-23)
  * @property durationMinutes Duration in minutes (0-59)
- * @property colorHex Color for the timer in hex format (Android color int)
+ * @property colorHex Color for the timer as an Android color integer
  */
 data class TimerModel(
     val id: String = UUID.randomUUID().toString(),
