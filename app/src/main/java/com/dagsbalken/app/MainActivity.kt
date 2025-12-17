@@ -252,10 +252,24 @@ fun LinearClockScreen(
     val now by rememberTicker1s()
 
     // --- Merge events and timers for display ---
-    // Filter activeTimers to only show those for today
+    // Filter activeTimers to only show those that are active today
+    // This includes timers that started yesterday but extend into today (cross-midnight)
     val today = remember(now) { LocalDate.now() }
     val todaysTimers = remember(activeTimers, today) {
-        activeTimers.filter { it.date == today }
+        activeTimers.filter { timer ->
+            // Timer is active today if:
+            // 1. It starts today
+            if (timer.date == today) {
+                true
+            }
+            // 2. It started yesterday and the end time is after midnight (crosses into today)
+            else if (timer.date == today.minusDays(1) && timer.endTime < timer.startTime) {
+                true
+            }
+            else {
+                false
+            }
+        }
     }
 
     val allItems = remember(calendarEvents, todaysTimers) {
