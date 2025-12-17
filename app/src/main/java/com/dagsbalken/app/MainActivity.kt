@@ -495,9 +495,11 @@ fun LinearDayCard(
                     val cornerRadiusPx = cornerRadiusDp.toPx()
 
                     val gradientBrush = Brush.horizontalGradient(
-                        0.0f to themeOption.timelineNightColor,
-                        0.5f to themeOption.timelineDayColor,
-                        1.0f to themeOption.timelineNightColor,
+                        0.0f to nightColor,
+                        0.25f to blendColors(nightColor, dayColor, 0.4f),
+                        0.5f to dayColor,
+                        0.75f to blendColors(nightColor, dayColor, 0.4f),
+                        1.0f to nightColor,
                         startX = 0f,
                         endX = width
                     )
