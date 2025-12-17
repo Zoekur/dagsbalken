@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -99,7 +98,6 @@ import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.data.WeatherLocationSettings
 import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.core.workers.WeatherWorker
-import com.dagsbalken.app.utils.blendColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -301,11 +299,8 @@ fun LinearClockScreen(
     val sheetState = rememberModalBottomSheetState()
 
     // Stable lambda for deletion
-    val onDeleteTimerLambda: (String) -> Unit = remember(scope, timerRepository) {
-        { id: String ->
-            scope.launch { timerRepository.removeActiveTimer(id) }
-            Unit
-        }
+    val onDeleteTimerLambda = remember(scope, timerRepository) {
+        { id: String -> scope.launch { timerRepository.removeActiveTimer(id) } }
     }
 
     if (showTimerSheet) {
@@ -374,7 +369,6 @@ fun LinearClockScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Use vertical scroll to allow content to push down
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -504,8 +498,6 @@ fun LinearDayCard(
     themeOption: ThemeOption
 ) {
     val cornerRadiusDp = 28.dp
-    val nightColor = themeOption.timelineNightColor
-    val dayColor = themeOption.timelineDayColor
 
     // Theme colors
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -633,7 +625,7 @@ fun CalendarSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Kalenderhändelser", style = MaterialTheme.typography.titleMedium)
+            Text("Kalender", style = MaterialTheme.typography.titleMedium)
             // Add fallback button if list is not empty, so user can still add events
             if (upcomingItems.isNotEmpty()) {
                 IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
@@ -940,4 +932,3 @@ fun Modifier.innerShadow(
         }
     }
 }
-
