@@ -503,7 +503,15 @@ fun LinearDayCard(
                             val item = items[i]
                             val startMin = item.startTime.hour * 60 + item.startTime.minute
                             val endMin = item.endTime.hour * 60 + item.endTime.minute
-                            val actualEndMin = if (endMin > startMin) endMin else startMin + 60
+                            
+                            // Handle cross-midnight events (e.g., 23:30 to 00:30)
+                            // If endMin <= startMin, the event spans midnight
+                            val actualEndMin = if (endMin > startMin) {
+                                endMin
+                            } else {
+                                // Add 24 hours (1440 minutes) to properly calculate duration
+                                endMin + (24 * 60)
+                            }
 
                             val eventStartPx = startMin * pxPerMin
                             val eventWidthPx = (actualEndMin - startMin) * pxPerMin
