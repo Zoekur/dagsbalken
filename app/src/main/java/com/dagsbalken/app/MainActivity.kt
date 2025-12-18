@@ -108,10 +108,12 @@ import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.core.workers.WeatherWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 // -------- HUVUDAKTIVITET --------
 class MainActivity : ComponentActivity() {
@@ -269,7 +271,7 @@ fun LinearClockScreen(
         }
     }
 
-    val now by rememberTicker1s()
+    val now by rememberMinuteTicker()
     val currentEpochDay = now.toLocalDate().toEpochDay()
     val today = remember(currentEpochDay) { LocalDate.ofEpochDay(currentEpochDay) }
 
@@ -1004,12 +1006,16 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
 }
 
 @Composable
-fun rememberTicker1s(): State<LocalDateTime> {
-    val state = remember { mutableStateOf(LocalDateTime.now()) }
+fun rememberMinuteTicker(): State<LocalDateTime> {
+    val state = remember { mutableStateOf(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)) }
     LaunchedEffect(Unit) {
         while (true) {
-            state.value = LocalDateTime.now()
-            delay(1000)
+            val now = LocalDateTime.now()
+            val nextMinute = now.plusMinutes(1).truncatedTo(ChronoUnit.MINUTES)
+            val delayMillis = Duration.between(now, nextMinute).toMillis()
+
+            state.value = now.truncatedTo(ChronoUnit.MINUTES)
+            delay(delayMillis.coerceAtLeast(100))
         }
     }
     return state
