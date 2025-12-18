@@ -146,38 +146,46 @@ class WeatherRepository(private val context: Context) {
         private fun loadForwardCacheFromJson(json: String?) {
             if (json.isNullOrBlank()) return
             val now = System.currentTimeMillis()
-            val arr = JSONArray(json)
-            synchronized(forwardCache) {
-                forwardCache.clear()
-                for (i in 0 until arr.length()) {
-                    val obj = arr.optJSONObject(i) ?: continue
-                    val key = obj.optString("q")
-                    val lat = obj.optDouble("lat", Double.NaN)
-                    val lon = obj.optDouble("lon", Double.NaN)
-                    val displayName = obj.optString("name", "")
-                    val ts = obj.optLong("ts", 0L)
-                    if (key.isNotBlank() && !lat.isNaN() && !lon.isNaN() && now - ts <= GEOCODE_CACHE_TTL_MS) {
-                        forwardCache[key] = ForwardEntry(lat, lon, displayName, ts)
+            try {
+                val arr = JSONArray(json)
+                synchronized(forwardCache) {
+                    forwardCache.clear()
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.optJSONObject(i) ?: continue
+                        val key = obj.optString("q")
+                        val lat = obj.optDouble("lat", Double.NaN)
+                        val lon = obj.optDouble("lon", Double.NaN)
+                        val displayName = obj.optString("name", "")
+                        val ts = obj.optLong("ts", 0L)
+                        if (key.isNotBlank() && !lat.isNaN() && !lon.isNaN() && now - ts <= GEOCODE_CACHE_TTL_MS) {
+                            forwardCache[key] = ForwardEntry(lat, lon, displayName, ts)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load forward cache")
             }
         }
 
         private fun loadReverseCacheFromJson(json: String?) {
             if (json.isNullOrBlank()) return
             val now = System.currentTimeMillis()
-            val arr = JSONArray(json)
-            synchronized(reverseCache) {
-                reverseCache.clear()
-                for (i in 0 until arr.length()) {
-                    val obj = arr.optJSONObject(i) ?: continue
-                    val key = obj.optString("key")
-                    val displayName = obj.optString("name", "")
-                    val ts = obj.optLong("ts", 0L)
-                    if (key.isNotBlank() && displayName.isNotBlank() && now - ts <= GEOCODE_CACHE_TTL_MS) {
-                        reverseCache[key] = ReverseEntry(displayName, ts)
+            try {
+                val arr = JSONArray(json)
+                synchronized(reverseCache) {
+                    reverseCache.clear()
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.optJSONObject(i) ?: continue
+                        val key = obj.optString("key")
+                        val displayName = obj.optString("name", "")
+                        val ts = obj.optLong("ts", 0L)
+                        if (key.isNotBlank() && displayName.isNotBlank() && now - ts <= GEOCODE_CACHE_TTL_MS) {
+                            reverseCache[key] = ReverseEntry(displayName, ts)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load reverse cache")
             }
         }
 
