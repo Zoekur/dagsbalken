@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -241,6 +243,24 @@ fun TimerDialog(
     var minutes by remember { mutableStateOf(timer?.durationMinutes?.toString() ?: "15") }
     var selectedColor by remember { mutableStateOf(timer?.colorHex ?: Color.Blue.toArgb()) }
 
+    val h = hours.toIntOrNull() ?: 0
+    val m = minutes.toIntOrNull() ?: 0
+    val isFormValid = name.isNotBlank() && (h > 0 || m > 0)
+
+    val submitForm = {
+        if (isFormValid) {
+            onSave(
+                TimerModel(
+                    id = timer?.id ?: UUID.randomUUID().toString(),
+                    name = name,
+                    durationHours = h,
+                    durationMinutes = m,
+                    colorHex = selectedColor
+                )
+            )
+        }
+    }
+
     // Define colors with names for better accessibility
     val colorOptions = listOf(
         Color.Blue to "Blue",
@@ -276,7 +296,11 @@ fun TimerDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next
+                    )
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -286,14 +310,23 @@ fun TimerDialog(
                         onValueChange = { if (it.all { char -> char.isDigit() }) hours = it },
                         label = { Text("Hours") },
                         modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        )
                     )
                     OutlinedTextField(
                         value = minutes,
                         onValueChange = { if (it.all { char -> char.isDigit() }) minutes = it },
                         label = { Text("Minutes") },
                         modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { submitForm() }
+                        )
                     )
                 }
 
@@ -336,21 +369,10 @@ fun TimerDialog(
                     TextButton(onClick = onDismiss) {
                         Text("Cancel")
                     }
-                    Button(onClick = {
-                        val h = hours.toIntOrNull() ?: 0
-                        val m = minutes.toIntOrNull() ?: 0
-                        if (name.isNotBlank() && (h > 0 || m > 0)) {
-                            onSave(
-                                TimerModel(
-                                    id = timer?.id ?: UUID.randomUUID().toString(),
-                                    name = name,
-                                    durationHours = h,
-                                    durationMinutes = m,
-                                    colorHex = selectedColor
-                                )
-                            )
-                        }
-                    }) {
+                    Button(
+                        onClick = submitForm,
+                        enabled = isFormValid
+                    ) {
                         Text("Save")
                     }
                 }
