@@ -28,12 +28,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -58,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -88,12 +92,15 @@ import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.settings.AppPreferences
 import com.dagsbalken.app.ui.settings.SettingsScreen
 import com.dagsbalken.app.ui.settings.ThemePreferences
+import com.dagsbalken.app.ui.settings.TimerDialog
 import com.dagsbalken.app.ui.theme.DagsbalkenTheme
 import com.dagsbalken.app.ui.theme.ThemeOption
+import com.dagsbalken.app.utils.blendColors
 import com.dagsbalken.core.data.BlockType
-import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.CustomBlock
+import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.data.TimerModel
 import com.dagsbalken.core.data.TimerRepository
 import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.data.WeatherLocationSettings
@@ -184,6 +191,8 @@ fun LinearClockScreen(
     var calendarEvents by remember { mutableStateOf(emptyList<DayEvent>()) }
     val activeTimers by timerRepository.activeTimersFlow.collectAsState(initial = emptyList())
     val timerTemplates by timerRepository.timerTemplatesFlow.collectAsState(initial = emptyList())
+
+    var showQuickTimerDialog by remember { mutableStateOf(false) }
 
     // Visibility Settings
     val showClock by viewModel.showClockFlow.collectAsState(initial = true)
@@ -299,9 +308,22 @@ fun LinearClockScreen(
     var showTimerSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
+    val onStartTimer = remember(timerTemplates) {
+        {
+            if (timerTemplates.isEmpty()) {
+                showQuickTimerDialog = true
+            } else {
+                showTimerSheet = true
+            }
+        }
+    }
+
     // Stable lambda for deletion
-    val onDeleteTimerLambda = remember(scope, timerRepository) {
-        { id: String -> scope.launch { timerRepository.removeActiveTimer(id) } }
+    val onDeleteTimerLambda: (String) -> Unit = remember(scope, timerRepository) {
+        { id: String ->
+            scope.launch { timerRepository.removeActiveTimer(id) }
+            Unit
+        }
     }
 
     if (showTimerSheet) {
@@ -313,53 +335,99 @@ fun LinearClockScreen(
                 Text("Välj timer att starta", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(16.dp))
                 if (timerTemplates.isEmpty()) {
-                    Text("Inga timers skapade. Gå till inställningar för att skapa.", color = Color.Gray)
-                }
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(timerTemplates) { timer ->
-                        Card(
-                            onClick = {
-                                val startTime = LocalTime.now()
-                                val endTime = startTime.plusHours(timer.durationHours.toLong())
-                                    .plusMinutes(timer.durationMinutes.toLong())
-                                val block = CustomBlock(
-                                    title = timer.name,
-                                    startTime = startTime,
-                                    endTime = endTime,
-                                    date = LocalDate.now(),
-                                    type = BlockType.TIMER,
-                                    color = timer.colorHex
-                                )
-                                scope.launch {
-                                    timerRepository.addActiveTimer(block)
-                                    showTimerSheet = false
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    Text("Inga timers skapade. Skapa en timer direkt.", color = Color.Gray)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = {
+                        showTimerSheet = false
+                        showQuickTimerDialog = true
+                    }) {
+                        Text("Skapa timer")
+                    }
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(timerTemplates) { timer ->
+                            Card(
+                                onClick = {
+                                    val startTime = LocalTime.now()
+                                    val endTime = startTime.plusHours(timer.durationHours.toLong())
+                                        .plusMinutes(timer.durationMinutes.toLong())
+                                    val block = CustomBlock(
+                                        title = timer.name,
+                                        startTime = startTime,
+                                        endTime = endTime,
+                                        date = LocalDate.now(),
+                                        type = BlockType.TIMER,
+                                        color = timer.colorHex
+                                    )
+                                    scope.launch {
+                                        timerRepository.addActiveTimer(block)
+                                        showTimerSheet = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Box(
-                                    Modifier
-                                        .size(24.dp)
-                                        .background(Color(timer.colorHex), CircleShape)
-                                )
-                                Spacer(Modifier.width(16.dp))
-                                Column {
-                                    Text(timer.name, style = MaterialTheme.typography.titleMedium)
-                                    Text("${timer.durationHours}h ${timer.durationMinutes}m")
+                                Row(
+                                    Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(24.dp)
+                                            .background(Color(timer.colorHex), CircleShape)
+                                    )
+                                    Spacer(Modifier.width(16.dp))
+                                    Column {
+                                        Text(timer.name, style = MaterialTheme.typography.titleMedium)
+                                        Text("${timer.durationHours}h ${timer.durationMinutes}m")
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Default.PlayArrow, null)
                                 }
-                                Spacer(Modifier.weight(1f))
-                                Icon(Icons.Default.PlayArrow, null)
                             }
                         }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = {
+                            showTimerSheet = false
+                            showQuickTimerDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Skapa ny timer")
                     }
                 }
                 Spacer(Modifier.height(32.dp))
             }
         }
+    }
+
+    if (showQuickTimerDialog) {
+        TimerDialog(
+            timer = null,
+            onDismiss = { showQuickTimerDialog = false },
+            onSave = { timerModel ->
+                val startTime = LocalTime.now()
+                val endTime = startTime
+                    .plusHours(timerModel.durationHours.toLong())
+                    .plusMinutes(timerModel.durationMinutes.toLong())
+                val block = CustomBlock(
+                    title = timerModel.name,
+                    startTime = startTime,
+                    endTime = endTime,
+                    date = LocalDate.now(),
+                    type = BlockType.TIMER,
+                    color = timerModel.colorHex
+                )
+                scope.launch {
+                    timerRepository.saveTimerTemplate(timerModel)
+                    timerRepository.addActiveTimer(block)
+                }
+                showQuickTimerDialog = false
+            }
+        )
     }
 
     Box(
@@ -417,9 +485,11 @@ fun LinearClockScreen(
 
             // 3. Timers Section
             if (showTimers) {
-                TimerSection(
-                    items = timerUiItems,
-                    onStartTimerClick = { showTimerSheet = true },
+                TimerTimelineSection(
+                    now = now.toLocalTime(),
+                    timers = timerUiItems,
+                    themeOption = themeOption,
+                    onStartTimerClick = onStartTimer,
                     onDeleteTimer = onDeleteTimerLambda
                 )
                 Spacer(Modifier.height(24.dp))
@@ -499,6 +569,8 @@ fun LinearDayCard(
     themeOption: ThemeOption
 ) {
     val cornerRadiusDp = 28.dp
+    val nightColor = themeOption.timelineNightColor
+    val dayColor = themeOption.timelineDayColor
 
     // Theme colors
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -606,7 +678,7 @@ fun LinearDayCard(
     }
 }
 
-// -------- SECTION: CALENDAR --------
+// -------- SECTION: CALENDAR / TIMER HELPERS --------
 @Composable
 fun CalendarSection(
     items: List<UiCustomBlock>,
@@ -615,8 +687,8 @@ fun CalendarSection(
 ) {
     val upcomingItems = remember(items, now) {
         items.filter {
-             val end = it.block.endTime
-             !end.isBefore(now.minusMinutes(1))
+            val end = it.block.endTime
+            !end.isBefore(now.minusMinutes(1))
         }
     }
 
@@ -627,7 +699,6 @@ fun CalendarSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Kalender", style = MaterialTheme.typography.titleMedium)
-            // Add fallback button if list is not empty, so user can still add events
             if (upcomingItems.isNotEmpty()) {
                 IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Add, "Lägg till händelse")
@@ -647,36 +718,49 @@ fun CalendarSection(
     }
 }
 
-// -------- SECTION: TIMERS --------
 @Composable
-fun TimerSection(
-    items: List<UiCustomBlock>,
+fun TimerTimelineSection(
+    now: LocalTime,
+    timers: List<UiCustomBlock>,
+    themeOption: ThemeOption,
     onStartTimerClick: () -> Unit,
     onDeleteTimer: (String) -> Unit
 ) {
-    // Show all active timers, even if expired? Usually active timers are removed when done or manually.
-    // For now, assume activeTimers list contains what we want to show.
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Timers", style = MaterialTheme.typography.titleMedium)
-             if (items.isNotEmpty()) {
-                IconButton(onClick = onStartTimerClick, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Add, "Starta timer")
-                }
+            IconButton(onClick = onStartTimerClick, modifier = Modifier.size(24.dp)) {
+                Icon(Icons.Default.Add, "Starta timer")
             }
         }
 
-        if (items.isEmpty()) {
+        if (timers.isEmpty()) {
             EmptyStateCard(text = "Inga timers", onClick = onStartTimerClick)
         } else {
-            items.forEach { item ->
-                key(item.block.id) {
-                    EventListItem(item = item, onDelete = { onDeleteTimer(item.block.id) })
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = onStartTimerClick) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Starta timer")
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                timers.forEach { timer ->
+                    TimerCountdownCard(
+                        timer = timer,
+                        now = now,
+                        themeOption = themeOption,
+                        onDelete = { onDeleteTimer(timer.block.id) }
+                    )
                 }
             }
         }
@@ -684,8 +768,110 @@ fun TimerSection(
 }
 
 @Composable
+fun TimerCountdownCard(
+    timer: UiCustomBlock,
+    now: LocalTime,
+    themeOption: ThemeOption,
+    onDelete: () -> Unit
+) {
+    val startMinutes = timer.block.startTime.hour * 60 + timer.block.startTime.minute
+    val endMinutes = timer.block.endTime.hour * 60 + timer.block.endTime.minute
+    val totalMinutes = if (endMinutes >= startMinutes) {
+        endMinutes - startMinutes
+    } else {
+        endMinutes + 24 * 60 - startMinutes
+    }.coerceAtLeast(1)
+
+    val nowMinutesRaw = now.hour * 60 + now.minute
+    val elapsedSinceStart = when {
+        nowMinutesRaw >= startMinutes -> nowMinutesRaw - startMinutes
+        else -> nowMinutesRaw + 24 * 60 - startMinutes
+    }
+    val elapsedMinutes = elapsedSinceStart.coerceIn(0, totalMinutes)
+    val remainingMinutes = (totalMinutes - elapsedMinutes).coerceAtLeast(0)
+    val fractionElapsed = elapsedMinutes / totalMinutes.toFloat()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(16.dp)
+                        .background(timer.block.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary, CircleShape)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(timer.block.title, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = remainingMinutes.toHourMinuteLabel(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Ta bort timer", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                val progressColor = timer.block.color?.let { Color(it) } ?: themeOption.timelineDayColor
+                Box(
+                    Modifier
+                        .fillMaxWidth(fractionElapsed.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(progressColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EventListItem(item: UiCustomBlock, onDelete: (() -> Unit)? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(12.dp)
+                .background(item.block.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary, CircleShape)
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.block.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text(
+                text = "${item.block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${item.block.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+        }
+        if (onDelete != null) {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Ta bort timer", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
 fun EmptyStateCard(text: String, onClick: () -> Unit) {
-     Box(
+    Box(
         Modifier
             .fillMaxWidth()
             .clickable { onClick() }
@@ -713,44 +899,6 @@ fun EmptyStateCard(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun EventListItem(item: UiCustomBlock, onDelete: (() -> Unit)? = null) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Icon / Dot
-        Box(
-             Modifier
-                 .size(12.dp)
-                 .background(item.block.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary, CircleShape)
-        )
-        Spacer(Modifier.width(16.dp))
-
-        Column(Modifier.weight(1f)) {
-            Text(item.block.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-            Text(
-                text = "${item.block.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} – ${item.block.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp
-            )
-        }
-
-        if (onDelete != null) {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, "Ta bort timer", tint = MaterialTheme.colorScheme.error)
-            }
-        }
-    }
-}
-
-// ----------------------------------------------------------
-// 2. VÄDER-KOMPONENT
-// ----------------------------------------------------------
-
-@Composable
 fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh: () -> Unit = {}) {
     Card(
         modifier = modifier.height(200.dp),
@@ -773,12 +921,7 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     val title = if (data.locationName.isNotBlank()) data.locationName else "Väderinformation"
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                         textAlign = TextAlign.Center
-                    )
+                    Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
                     if (data.provider.isNotBlank()) {
                         Text(
                             text = data.provider,
@@ -799,9 +942,7 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
                         color = Color.Gray,
                         textAlign = TextAlign.Center
                     )
-
                     Spacer(Modifier.height(8.dp))
-
                     val lastUpdatedText = if (data.lastUpdatedMillis > 0L) {
                         try {
                             val instant = java.time.Instant.ofEpochMilli(data.lastUpdatedMillis)
@@ -812,7 +953,6 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
                             "Uppdaterad senast: --:--"
                         }
                     } else "Uppdaterad senast: --:--"
-
                     Text(
                         text = lastUpdatedText,
                         fontSize = 12.sp,
@@ -824,10 +964,6 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
         }
     }
 }
-
-// ----------------------------------------------------------
-// 3. KLÄDRÅDS-KOMPONENT
-// ----------------------------------------------------------
 
 @Composable
 fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
@@ -845,28 +981,21 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
         ) {
             if (!data.isDataLoaded) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(data.adviceIcon, fontSize = 48.sp)
-                    Text(
-                        data.adviceText,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text("Hämtar råd...", fontSize = 14.sp, color = Color.Gray)
                 }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "Klädråd",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Text("Klädråd", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.height(8.dp))
                     Text(data.adviceIcon, fontSize = 48.sp)
                     Text(
                         data.adviceText,
                         fontSize = 12.sp,
                         color = Color.Gray,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             }
@@ -874,18 +1003,26 @@ fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
     }
 }
 
-// -------- HJÄLPARE --------
-
 @Composable
 fun rememberTicker1s(): State<LocalDateTime> {
-	val state = remember { mutableStateOf(LocalDateTime.now()) }
-	LaunchedEffect(Unit) {
-		while (true) {
-			state.value = LocalDateTime.now()
-			delay(60000)
-		}
-	}
-	return state
+    val state = remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            state.value = LocalDateTime.now()
+            delay(1000)
+        }
+    }
+    return state
+}
+
+private fun Int.toHourMinuteLabel(): String {
+    val hours = this / 60
+    val minutes = this % 60
+    return when {
+        hours > 0 && minutes > 0 -> "$hours h $minutes min kvar"
+        hours > 0 -> "$hours h kvar"
+        else -> "$minutes min kvar"
+    }
 }
 
 fun Modifier.innerShadow(
