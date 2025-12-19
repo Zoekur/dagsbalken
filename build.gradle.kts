@@ -6,8 +6,6 @@ buildscript {
     }
     configurations.all {
         resolutionStrategy {
-            force("com.google.protobuf:protobuf-java:4.28.2")
-            force("com.google.protobuf:protobuf-kotlin:4.28.2")
             force("org.jdom:jdom2:2.0.6.1")
             force("org.apache.commons:commons-compress:1.26.1")
             eachDependency {
@@ -29,8 +27,6 @@ plugins {
 allprojects {
     configurations.all {
         resolutionStrategy {
-            force("com.google.protobuf:protobuf-java:4.28.2")
-            force("com.google.protobuf:protobuf-kotlin:4.28.2")
             force("org.jdom:jdom2:2.0.6.1")
             force("org.apache.commons:commons-compress:1.26.1")
             eachDependency {
