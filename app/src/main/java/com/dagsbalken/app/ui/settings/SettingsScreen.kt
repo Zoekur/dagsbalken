@@ -1,6 +1,7 @@
 package com.dagsbalken.app.ui.settings
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -40,7 +43,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.dagsbalken.app.AodActivity
 import com.dagsbalken.app.ui.MainViewModel
+import com.dagsbalken.app.ui.components.ColorPicker
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.theme.ThemeOption
 import com.dagsbalken.app.ui.theme.ThemeSelector
@@ -73,6 +78,9 @@ fun SettingsScreen(
     val showWeather = viewModel?.showWeatherFlow?.collectAsState(initial = true)
     val showClothing = viewModel?.showClothingFlow?.collectAsState(initial = true)
 
+    // AOD Settings
+    val aodColor = viewModel?.aodColorFlow?.collectAsState(initial = -65536) // Default Red
+    val aodOpacity = viewModel?.aodOpacityFlow?.collectAsState(initial = 0.5f)
 
     LaunchedEffect(locationSettings.manualLocationName) {
         if (manualLocationText != locationSettings.manualLocationName) {
@@ -136,6 +144,47 @@ fun SettingsScreen(
                 SettingsToggle("Timers", showTimers?.value ?: true) { viewModel.setShowTimers(it) }
                 SettingsToggle("Väderkort", showWeather?.value ?: true) { viewModel.setShowWeather(it) }
                 SettingsToggle("Klädrådskort", showClothing?.value ?: true) { viewModel.setShowClothing(it) }
+
+                // AOD Settings Section
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Nattläge / AOD", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text("Strimma-färg", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                ColorPicker(
+                    selectedColor = aodColor?.value ?: -65536,
+                    onColorSelected = { viewModel.setAodColor(it) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Ljusstyrka (Opacitet): ${((aodOpacity?.value ?: 0.5f) * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = aodOpacity?.value ?: 0.5f,
+                    onValueChange = { viewModel.setAodOpacity(it) },
+                    valueRange = 0.1f..1.0f
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(context, AodActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Starta Nattläge Manuellt")
+                }
+                Text(
+                    text = "Tips: Du kan också välja Dagsbalken som skärmsläckare i Androids inställningar för att starta detta automatiskt vid laddning.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
