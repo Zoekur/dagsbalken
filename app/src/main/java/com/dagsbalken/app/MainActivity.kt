@@ -597,7 +597,7 @@ fun LinearDayCard(
         val currentItemsState = rememberUpdatedState(items)
 
         // Tidslinje med drawWithCache
-        val drawModifier = remember(themeOption) {
+        val drawModifier = remember(themeOption, tickColor, majorTickColor, nowColor) {
             Modifier.drawWithCache {
                 val width = size.width
                 val heightPx = size.height
