@@ -27,10 +27,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -52,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -176,7 +179,8 @@ fun TimerEditor(
                     onClick = {
                         timerToDelete?.let { onDeleteTimer(it.id) }
                         timerToDelete = null
-                    }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Delete")
                 }
@@ -247,6 +251,20 @@ fun TimerDialog(
     val m = minutes.toIntOrNull() ?: 0
     val isFormValid = name.isNotBlank() && (h > 0 || m > 0)
 
+    val submitForm = {
+        if (isFormValid) {
+            onSave(
+                TimerModel(
+                    id = timer?.id ?: UUID.randomUUID().toString(),
+                    name = name,
+                    durationHours = h,
+                    durationMinutes = m,
+                    colorHex = selectedColor
+                )
+            )
+        }
+    }
+
     // Define colors with names for better accessibility
     val colorOptions = listOf(
         Color.Blue to "Blue",
@@ -311,19 +329,7 @@ fun TimerDialog(
                             imeAction = ImeAction.Done
                         ),
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (isFormValid) {
-                                    onSave(
-                                        TimerModel(
-                                            id = timer?.id ?: UUID.randomUUID().toString(),
-                                            name = name,
-                                            durationHours = h,
-                                            durationMinutes = m,
-                                            colorHex = selectedColor
-                                        )
-                                    )
-                                }
-                            }
+                            onDone = { submitForm() }
                         )
                     )
                 }
@@ -354,8 +360,19 @@ fun TimerDialog(
                                     role = Role.RadioButton
                                     selected = isSelected
                                     contentDescription = "$colorName color"
-                                }
-                        )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                val checkColor = if (color.luminance() > 0.5f) Color.Black else Color.White
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = checkColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -368,19 +385,7 @@ fun TimerDialog(
                         Text("Cancel")
                     }
                     Button(
-                        onClick = {
-                            if (isFormValid) {
-                                onSave(
-                                    TimerModel(
-                                        id = timer?.id ?: UUID.randomUUID().toString(),
-                                        name = name,
-                                        durationHours = h,
-                                        durationMinutes = m,
-                                        colorHex = selectedColor
-                                    )
-                                )
-                            }
-                        },
+                        onClick = { submitForm() },
                         enabled = isFormValid
                     ) {
                         Text("Save")
