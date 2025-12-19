@@ -58,6 +58,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -504,10 +505,8 @@ fun LinearClockScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (showWeather) {
-                        WeatherInfoCard(
-                            modifier = Modifier.weight(1f),
-                            data = weatherData,
-                            onRefresh = {
+                        val onRefreshWeather = remember(scope, weatherRepository, context) {
+                            {
                                 scope.launch {
                                     val success = weatherRepository.fetchAndSaveWeatherOnce()
                                     Toast.makeText(
@@ -516,7 +515,13 @@ fun LinearClockScreen(
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
+                                Unit
                             }
+                        }
+                        WeatherInfoCard(
+                            modifier = Modifier.weight(1f),
+                            data = weatherData,
+                            onRefresh = onRefreshWeather
                         )
                     } else if (showClothing) {
                          // Filler to keep clothing card ratio if weather is hidden but clothing shown
@@ -586,96 +591,108 @@ fun LinearDayCard(
             .shadow(elevation = 8.dp, shape = RoundedCornerShape(cornerRadiusDp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(cornerRadiusDp))
     ) {
+        // Optimization: Use rememberUpdatedState to read dynamic values inside drawing phase
+        // This prevents the drawWithCache builder from re-running (and re-allocating Brush) every minute
+        val currentNowState = rememberUpdatedState(now)
+        val currentItemsState = rememberUpdatedState(items)
+
         // Tidslinje med drawWithCache
+        val drawModifier = remember(themeOption, tickColor, majorTickColor, nowColor) {
+            Modifier.drawWithCache {
+                val width = size.width
+                val heightPx = size.height
+
+                val gradientBrush = Brush.horizontalGradient(
+                    0.0f to nightColor,
+                    0.25f to blendColors(nightColor, dayColor, 0.4f),
+                    0.5f to dayColor,
+                    0.75f to blendColors(nightColor, dayColor, 0.4f),
+                    1.0f to nightColor,
+                    startX = 0f,
+                    endX = width
+                )
+
+                val pxPerMin = width / (24 * 60)
+
+                onDrawBehind {
+                    // Read stable state inside draw phase to trigger redraw without rebuilding cache
+                    val currentNow = currentNowState.value
+                    val currentItems = currentItemsState.value
+
+                    val currentMinutes = currentNow.hour * 60 + currentNow.minute
+                    val currentX = currentMinutes * pxPerMin
+
+                    // 1. Gradient Background
+                    drawRect(
+                        brush = gradientBrush,
+                        topLeft = Offset.Zero,
+                        size = Size(currentX.coerceIn(0f, width), heightPx)
+                    )
+
+                    // 2. Rita events/timers
+                    for (i in currentItems.indices) {
+                        val item = currentItems[i]
+                        val startMin = item.startTime.hour * 60 + item.startTime.minute
+                        val endMin = item.endTime.hour * 60 + item.endTime.minute
+
+                        val actualEndMin = if (endMin > startMin) {
+                            endMin
+                        } else if (item.startTime == LocalTime.MIDNIGHT) {
+                            endMin
+                        } else {
+                            24 * 60
+                        }
+
+                        val eventStartPx = startMin * pxPerMin
+                        val eventWidthPx = (actualEndMin - startMin) * pxPerMin
+
+                        val color = item.color?.let { Color(it) } ?: Color.Gray
+
+                        drawRect(
+                            color = color.copy(alpha = 0.3f),
+                            topLeft = Offset(eventStartPx, 0f),
+                            size = Size(eventWidthPx, heightPx)
+                        )
+                    }
+
+                    // 3. Ticks
+                    for (h in 0 until 24) {
+                        val min = h * 60
+                        val x = min * pxPerMin
+
+                        val isMajor = h == 6 || h == 12 || h == 18
+                        val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
+                        val tickStroke = if (isMajor) 4f else 2f
+                        val color = if (isMajor) majorTickColor else tickColor
+
+                        val startY = (heightPx - tickHeight) / 2f
+                        val endY = startY + tickHeight
+
+                        drawLine(
+                            color = color,
+                            start = Offset(x, startY),
+                            end = Offset(x, endY),
+                            strokeWidth = tickStroke,
+                            cap = StrokeCap.Round
+                        )
+                    }
+
+                    // 4. Nu-markör
+                    drawLine(
+                        color = nowColor,
+                        start = Offset(currentX, 0f),
+                        end = Offset(currentX, heightPx),
+                        strokeWidth = 4f,
+                        cap = StrokeCap.Square
+                    )
+                }
+            }
+        }
+
         Spacer(
             modifier = Modifier
                 .fillMaxSize()
-                .drawWithCache {
-                    val width = size.width
-                    val heightPx = size.height
-                    val cornerRadiusPx = cornerRadiusDp.toPx()
-
-                    val gradientBrush = Brush.horizontalGradient(
-                        0.0f to nightColor,
-                        0.25f to blendColors(nightColor, dayColor, 0.4f),
-                        0.5f to dayColor,
-                        0.75f to blendColors(nightColor, dayColor, 0.4f),
-                        1.0f to nightColor,
-                        startX = 0f,
-                        endX = width
-                    )
-
-                    val pxPerMin = width / (24 * 60)
-
-                    onDrawBehind {
-                        val currentMinutes = now.hour * 60 + now.minute
-                        val currentX = currentMinutes * pxPerMin
-
-                        // 1. Gradient Background
-                        drawRect(
-                            brush = gradientBrush,
-                            topLeft = Offset.Zero,
-                            size = Size(currentX.coerceIn(0f, width), heightPx)
-                        )
-
-                        // 2. Rita events/timers
-                        for (i in items.indices) {
-                            val item = items[i]
-                            val startMin = item.startTime.hour * 60 + item.startTime.minute
-                            val endMin = item.endTime.hour * 60 + item.endTime.minute
-                            
-                            val actualEndMin = if (endMin > startMin) {
-                                endMin
-                            } else if (item.startTime == LocalTime.MIDNIGHT) {
-                                endMin
-                            } else {
-                                24 * 60
-                            }
-
-                            val eventStartPx = startMin * pxPerMin
-                            val eventWidthPx = (actualEndMin - startMin) * pxPerMin
-
-                            val color = item.color?.let { Color(it) } ?: Color.Gray
-
-                            drawRect(
-                                color = color.copy(alpha = 0.3f),
-                                topLeft = Offset(eventStartPx, 0f),
-                                size = Size(eventWidthPx, heightPx)
-                            )
-                        }
-
-                        // 3. Ticks
-                        for (h in 0 until 24) {
-                            val min = h * 60
-                            val x = min * pxPerMin
-
-                            val isMajor = h == 6 || h == 12 || h == 18
-                            val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
-                            val tickStroke = if (isMajor) 4f else 2f
-                            val color = if (isMajor) majorTickColor else tickColor
-
-                            val startY = (heightPx - tickHeight) / 2f
-                            val endY = startY + tickHeight
-
-                            drawLine(
-                                color = color,
-                                start = Offset(x, startY),
-                                end = Offset(x, endY),
-                                strokeWidth = tickStroke,
-                                cap = StrokeCap.Round
-                            )
-                        }
-
-                        // 4. Nu-markör
-                        drawLine(
-                            color = nowColor,
-                            start = Offset(currentX, 0f),
-                            end = Offset(currentX, heightPx),
-                            strokeWidth = 4f,
-                            cap = StrokeCap.Square
-                        )
-                    }
-                }
+                .then(drawModifier)
         )
     }
 }
