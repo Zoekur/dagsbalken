@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -20,6 +22,10 @@ class AppPreferences(context: Context) {
         val SHOW_TIMERS = booleanPreferencesKey("show_timers")
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_CLOTHING = booleanPreferencesKey("show_clothing")
+
+        // AOD Settings
+        val AOD_COLOR = intPreferencesKey("aod_color")
+        val AOD_OPACITY = floatPreferencesKey("aod_opacity")
     }
 
     val showClock: Flow<Boolean> = appContext.appSettingsDataStore.data
@@ -36,6 +42,12 @@ class AppPreferences(context: Context) {
 
     val showClothing: Flow<Boolean> = appContext.appSettingsDataStore.data
         .map { prefs -> prefs[SHOW_CLOTHING] ?: true }
+
+    val aodColor: Flow<Int> = appContext.appSettingsDataStore.data
+        .map { prefs -> prefs[AOD_COLOR] ?: -65536 } // Default Red (0xFFFF0000 -> -65536 in signed Int)
+
+    val aodOpacity: Flow<Float> = appContext.appSettingsDataStore.data
+        .map { prefs -> prefs[AOD_OPACITY] ?: 0.5f }
 
     suspend fun setShowClock(show: Boolean) {
         appContext.appSettingsDataStore.edit { it[SHOW_CLOCK] = show }
@@ -55,5 +67,13 @@ class AppPreferences(context: Context) {
 
     suspend fun setShowClothing(show: Boolean) {
         appContext.appSettingsDataStore.edit { it[SHOW_CLOTHING] = show }
+    }
+
+    suspend fun setAodColor(color: Int) {
+        appContext.appSettingsDataStore.edit { it[AOD_COLOR] = color }
+    }
+
+    suspend fun setAodOpacity(opacity: Float) {
+        appContext.appSettingsDataStore.edit { it[AOD_OPACITY] = opacity }
     }
 }
