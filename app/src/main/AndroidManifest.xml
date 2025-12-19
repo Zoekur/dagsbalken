@@ -64,6 +64,23 @@
             android:exported="true"
             android:theme="@style/Theme.Dagsbalken" />
 
+        <activity
+            android:name=".AodActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dagsbalken"
+            android:label="Nattläge" />
+
+        <service
+            android:name=".service.AodDreamService"
+            android:exported="true"
+            android:permission="android.permission.BIND_DREAM_SERVICE"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".widget.BootCompletedReceiver"
             android:enabled="true"
