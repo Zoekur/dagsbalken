@@ -52,7 +52,7 @@ class LinearClockTickReceiver : BroadcastReceiver() {
             // Use setRepeating for efficiency.
             alarmManager.setRepeating(
                 AlarmManager.RTC,
-                System.currentTimeMillis(),
+                System.currentTimeMillis() + UPDATE_INTERVAL_MILLIS,
                 UPDATE_INTERVAL_MILLIS,
                 pendingIntent
             )
