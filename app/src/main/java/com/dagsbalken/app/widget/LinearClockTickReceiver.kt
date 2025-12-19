@@ -23,6 +23,8 @@ class LinearClockTickReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 LinearClockWidget.updateAll(context)
+            } catch (e: Exception) {
+                android.util.Log.e("LinearClockTickReceiver", "Widget update failed", e)
             } finally {
                 pendingResult.finish()
             }
