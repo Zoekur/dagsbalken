@@ -22,6 +22,10 @@ class MainViewModel(
     val showWeatherFlow = appPreferences.showWeather
     val showClothingFlow = appPreferences.showClothing
 
+    // AOD Settings Flows
+    val aodColorFlow = appPreferences.aodColor
+    val aodOpacityFlow = appPreferences.aodOpacity
+
     fun onThemeOptionChange(option: ThemeOption) {
         viewModelScope.launch {
             themePreferences.setThemeOption(option)
@@ -33,4 +37,7 @@ class MainViewModel(
     fun setShowTimers(show: Boolean) = viewModelScope.launch { appPreferences.setShowTimers(show) }
     fun setShowWeather(show: Boolean) = viewModelScope.launch { appPreferences.setShowWeather(show) }
     fun setShowClothing(show: Boolean) = viewModelScope.launch { appPreferences.setShowClothing(show) }
+
+    fun setAodColor(color: Int) = viewModelScope.launch { appPreferences.setAodColor(color) }
+    fun setAodOpacity(opacity: Float) = viewModelScope.launch { appPreferences.setAodOpacity(opacity) }
 }
