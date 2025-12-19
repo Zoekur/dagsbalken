@@ -65,6 +65,10 @@
             android:theme="@style/Theme.Dagsbalken" />
 
         <receiver
+            android:name=".widget.LinearClockTickReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".widget.BootCompletedReceiver"
             android:enabled="true"
             android:exported="true">
