@@ -20,7 +20,7 @@ import com.dagsbalken.app.ui.settings.AppPreferences
 class AodDreamService : DreamService(), androidx.lifecycle.LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
-    private val viewModelStore = ViewModelStore()
+    private val internalViewModelStore = ViewModelStore()
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
 
     override val lifecycle: Lifecycle
@@ -29,7 +29,9 @@ class AodDreamService : DreamService(), androidx.lifecycle.LifecycleOwner, ViewM
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
 
-    override fun getViewModelStore(): ViewModelStore = viewModelStore
+    // Implement required ViewModelStoreOwner property
+    override val viewModelStore: ViewModelStore
+        get() = internalViewModelStore
 
     override fun onCreate() {
         super.onCreate()
@@ -81,7 +83,7 @@ class AodDreamService : DreamService(), androidx.lifecycle.LifecycleOwner, ViewM
 
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        viewModelStore.clear()
+        internalViewModelStore.clear()
         super.onDestroy()
     }
 }

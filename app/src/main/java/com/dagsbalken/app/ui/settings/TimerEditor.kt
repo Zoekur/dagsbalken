@@ -115,17 +115,27 @@ fun TimerEditor(
         }
     ) { padding ->
         if (timers.isEmpty()) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "No timers yet. Add one!",
+                    text = "You haven't created any timers yet.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {
+                    editingTimer = null
+                    showDialog = true
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Timer")
+                }
             }
         } else {
             LazyColumn(
