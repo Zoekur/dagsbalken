@@ -63,10 +63,13 @@ class AodDreamService : DreamService(), androidx.lifecycle.LifecycleOwner, ViewM
             setContent {
                 val color by prefs.aodColor.collectAsState(initial = -65536)
                 val opacity by prefs.aodOpacity.collectAsState(initial = 0.5f)
+                // Position in percent from top of screen (0-100)
+                val positionPercent by prefs.aodPositionPercent.collectAsState(initial = 5f)
 
                 AodScreen(
                     color = color,
                     opacity = opacity,
+                    positionPercent = positionPercent,
                     onExit = {
                         finish()
                     }

@@ -81,6 +81,7 @@ fun SettingsScreen(
     // AOD Settings
     val aodColor = viewModel?.aodColorFlow?.collectAsState(initial = -65536) // Default Red
     val aodOpacity = viewModel?.aodOpacityFlow?.collectAsState(initial = 0.5f)
+    val aodPositionPercent = viewModel?.aodPositionPercentFlow?.collectAsState(initial = 5f)
 
     LaunchedEffect(locationSettings.manualLocationName) {
         if (manualLocationText != locationSettings.manualLocationName) {
@@ -167,6 +168,17 @@ fun SettingsScreen(
                     value = aodOpacity?.value ?: 0.5f,
                     onValueChange = { viewModel.setAodOpacity(it) },
                     valueRange = 0.1f..1.0f
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Vertikal position: ${(aodPositionPercent?.value ?: 5f).toInt()}% från toppen",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Slider(
+                    value = aodPositionPercent?.value ?: 5f,
+                    onValueChange = { viewModel.setAodPositionPercent(it.coerceIn(0f, 100f)) },
+                    valueRange = 0f..100f
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

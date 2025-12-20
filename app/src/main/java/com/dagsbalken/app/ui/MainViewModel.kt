@@ -25,6 +25,7 @@ class MainViewModel(
     // AOD Settings Flows
     val aodColorFlow = appPreferences.aodColor
     val aodOpacityFlow = appPreferences.aodOpacity
+    val aodPositionPercentFlow = appPreferences.aodPositionPercent
 
     fun onThemeOptionChange(option: ThemeOption) {
         viewModelScope.launch {
@@ -40,4 +41,5 @@ class MainViewModel(
 
     fun setAodColor(color: Int) = viewModelScope.launch { appPreferences.setAodColor(color) }
     fun setAodOpacity(opacity: Float) = viewModelScope.launch { appPreferences.setAodOpacity(opacity) }
+    fun setAodPositionPercent(positionPercent: Float) = viewModelScope.launch { appPreferences.setAodPositionPercent(positionPercent) }
 }

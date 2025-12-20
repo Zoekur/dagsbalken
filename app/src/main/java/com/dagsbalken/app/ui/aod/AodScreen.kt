@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -32,6 +31,7 @@ import kotlin.math.roundToInt
 fun AodScreen(
     color: Int,
     opacity: Float,
+    positionPercent: Float,
     onExit: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -39,6 +39,9 @@ fun AodScreen(
 
     // Stripe height is roughly 5% of screen height
     val stripeHeight = screenHeight * 0.05f
+
+    val clampedPercent = positionPercent.coerceIn(0f, 100f)
+    val verticalOffset = (screenHeight - stripeHeight) * (clampedPercent / 100f)
 
     // Burn-in protection state
     var offsetY by remember { mutableStateOf(0f) }
@@ -53,8 +56,6 @@ fun AodScreen(
             now = LocalTime.now()
 
             // Shift slightly every minute to prevent burn-in
-            // Shift Y between 0 and 10 pixels
-            // Shift X between -5 and 5 pixels (though X is handled by width, shifting start helps too)
             offsetY = (Math.random() * 20 - 5).toFloat() // Small vertical jitter
             offsetX = (Math.random() * 10 - 5).toFloat() // Small horizontal jitter
 
@@ -76,7 +77,10 @@ fun AodScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(stripeHeight)
-                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) } // Apply burn-in offset
+                .offset {
+                    val baseY = verticalOffset.roundToPx() + offsetY
+                    IntOffset(offsetX.roundToInt(), baseY.roundToInt())
+                }
                 .align(Alignment.TopStart)
         ) {
             val width = size.width
@@ -88,10 +92,43 @@ fun AodScreen(
 
             val barWidth = width * progress
 
+            // Huvudprogress-bar för dygnet
             drawRect(
-                color = Color(color).copy(alpha = opacity),
+                color = Color(color).copy(alpha = opacity.coerceIn(0f, 1f)),
                 topLeft = Offset.Zero,
                 size = Size(barWidth, height)
+            )
+
+            // --- Dagshållpunkter: sol (08:00) och måne (20:00) ---
+            val morningMinutes = 8 * 60
+            val eveningMinutes = 20 * 60
+
+            val morningX = width * (morningMinutes / totalMinutes.toFloat())
+            val eveningX = width * (eveningMinutes / totalMinutes.toFloat())
+
+            val iconRadius = height * 0.3f
+
+            val baseColor = Color(color).copy(alpha = opacity.coerceIn(0f, 1f))
+
+            // Solikon – enkel cirkel
+            drawCircle(
+                color = baseColor,
+                radius = iconRadius,
+                center = Offset(morningX, height / 2f)
+            )
+
+            // Månikon – cirkel + utskuren del för crescent
+            val moonCenter = Offset(eveningX, height / 2f)
+            drawCircle(
+                color = baseColor,
+                radius = iconRadius,
+                center = moonCenter
+            )
+            // Skapa "halvmåne" genom att rita en andra cirkel i bakgrundsfärgen
+            drawCircle(
+                color = Color.Black,
+                radius = iconRadius * 0.8f,
+                center = moonCenter + Offset(iconRadius * 0.4f, 0f)
             )
         }
     }
