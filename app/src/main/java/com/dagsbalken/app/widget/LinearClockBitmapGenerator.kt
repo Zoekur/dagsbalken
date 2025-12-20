@@ -113,8 +113,10 @@ object LinearClockBitmapGenerator {
         paint.strokeWidth = 2f * if(densityMultiplier > 1.5) 1.5f else 1f
         paint.textSize = 24f * config.scale * densityMultiplier
         // Bolt Optimization: Cached Typeface lookup
-        paint.typeface = typefaceCache.computeIfAbsent(config.font) { fontName ->
-            Typeface.create(fontName, Typeface.BOLD)
+        val style = Typeface.BOLD
+        val cacheKey = "${config.font}-$style"
+        paint.typeface = typefaceCache.computeIfAbsent(cacheKey) {
+            Typeface.create(config.font, style)
         }
         paint.textAlign = Paint.Align.CENTER
 
