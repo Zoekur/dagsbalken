@@ -134,7 +134,7 @@ fun TimerEditor(
                 }) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create Timer")
+                    Text("Add Timer")
                 }
             }
         } else {
