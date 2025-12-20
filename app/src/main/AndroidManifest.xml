@@ -79,6 +79,9 @@
                 <action android:name="android.service.dreams.DreamService" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <meta-data
+                android:name="android.service.dream.DREAM_CONFIG_ACTIVITY"
+                android:value="com.dagsbalken.app.AodActivity" />
         </service>
 
         <receiver
