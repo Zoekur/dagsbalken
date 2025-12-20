@@ -17,19 +17,17 @@ class AodActivity : ComponentActivity() {
         // Keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Hide system UI for immersive mode
-        // Note: EdgeToEdge is not enabled in this project as per memories, but for AOD we want full black
-        // However, standard WindowManager flags can help.
-
         val prefs = AppPreferences(this)
 
         setContent {
             val color by prefs.aodColor.collectAsState(initial = -65536)
             val opacity by prefs.aodOpacity.collectAsState(initial = 0.5f)
+            val positionPercent by prefs.aodPositionPercent.collectAsState(initial = 5f)
 
             AodScreen(
                 color = color,
                 opacity = opacity,
+                positionPercent = positionPercent,
                 onExit = {
                     finish()
                 }
