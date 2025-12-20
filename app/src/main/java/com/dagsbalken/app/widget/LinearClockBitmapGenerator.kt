@@ -18,6 +18,9 @@ object LinearClockBitmapGenerator {
         Paint()
     }
 
+    // Cache for Typeface objects to avoid repeated JNI lookups/creation
+    private val typefaceCache = java.util.concurrent.ConcurrentHashMap<String, Typeface>()
+
     fun generate(
         context: Context,
         width: Int,
@@ -109,7 +112,10 @@ object LinearClockBitmapGenerator {
         paint.color = colorBorder
         paint.strokeWidth = 2f * if(densityMultiplier > 1.5) 1.5f else 1f
         paint.textSize = 24f * config.scale * densityMultiplier
-        paint.typeface = Typeface.create(config.font, Typeface.BOLD)
+        // Bolt Optimization: Cached Typeface lookup
+        paint.typeface = typefaceCache.computeIfAbsent(config.font) { fontName ->
+            Typeface.create(fontName, Typeface.BOLD)
+        }
         paint.textAlign = Paint.Align.CENTER
 
         // Find first visible hour
