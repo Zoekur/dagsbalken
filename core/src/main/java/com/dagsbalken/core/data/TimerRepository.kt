@@ -26,7 +26,12 @@ class TimerRepository(private val context: Context) {
     val timerTemplatesFlow: Flow<List<TimerModel>> = context.timerDataStore.data
         .map { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            deserializeTimerTemplates(jsonString)
+            try {
+                deserializeTimerTemplates(jsonString)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading timer templates", e)
+                emptyList()
+            }
         }
 
     suspend fun saveTimerTemplate(timer: TimerModel) {
@@ -67,22 +72,19 @@ class TimerRepository(private val context: Context) {
 
     private fun deserializeTimerTemplates(jsonString: String): List<TimerModel> {
         val list = mutableListOf<TimerModel>()
-        try {
-            val jsonArray = JSONArray(jsonString)
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                list.add(
-                    TimerModel(
-                        id = obj.getString("id"),
-                        name = obj.getString("name"),
-                        durationHours = obj.getInt("durationHours"),
-                        durationMinutes = obj.getInt("durationMinutes"),
-                        colorHex = obj.getInt("colorHex")
-                    )
+        // Throw exception if parsing fails to abort transaction in save/delete operations
+        val jsonArray = JSONArray(jsonString)
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            list.add(
+                TimerModel(
+                    id = obj.getString("id"),
+                    name = obj.getString("name"),
+                    durationHours = obj.getInt("durationHours"),
+                    durationMinutes = obj.getInt("durationMinutes"),
+                    colorHex = obj.getInt("colorHex")
                 )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to deserialize timer templates")
+            )
         }
         return list
     }
@@ -92,7 +94,12 @@ class TimerRepository(private val context: Context) {
     val activeTimersFlow: Flow<List<CustomBlock>> = context.timerDataStore.data
         .map { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            deserializeActiveTimers(jsonString)
+            try {
+                deserializeActiveTimers(jsonString)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading active timers", e)
+                emptyList()
+            }
         }
 
     suspend fun addActiveTimer(block: CustomBlock) {
@@ -130,27 +137,24 @@ class TimerRepository(private val context: Context) {
 
     private fun deserializeActiveTimers(jsonString: String): List<CustomBlock> {
         val list = mutableListOf<CustomBlock>()
-        try {
-            val jsonArray = JSONArray(jsonString)
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                // Use current date if date field is missing (backward compatibility)
-                val dateStr = obj.optString("date", LocalDate.now().toString())
+        // Throw exception if parsing fails to abort transaction in add/remove operations
+        val jsonArray = JSONArray(jsonString)
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            // Use current date if date field is missing (backward compatibility)
+            val dateStr = obj.optString("date", LocalDate.now().toString())
 
-                list.add(
-                    CustomBlock(
-                        id = obj.getString("id"),
-                        title = obj.getString("title"),
-                        startTime = java.time.LocalTime.parse(obj.getString("startTime")),
-                        endTime = java.time.LocalTime.parse(obj.getString("endTime")),
-                        date = java.time.LocalDate.parse(dateStr),
-                        type = BlockType.valueOf(obj.getString("type")),
-                        color = obj.optInt("color", 0).takeIf { it != 0 }
-                    )
+            list.add(
+                CustomBlock(
+                    id = obj.getString("id"),
+                    title = obj.getString("title"),
+                    startTime = java.time.LocalTime.parse(obj.getString("startTime")),
+                    endTime = java.time.LocalTime.parse(obj.getString("endTime")),
+                    date = java.time.LocalDate.parse(dateStr),
+                    type = BlockType.valueOf(obj.getString("type")),
+                    color = obj.optInt("color", 0).takeIf { it != 0 }
                 )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to deserialize active timers")
+            )
         }
         return list
     }
