@@ -26,6 +26,7 @@ class AppPreferences(context: Context) {
         // AOD Settings
         val AOD_COLOR = intPreferencesKey("aod_color")
         val AOD_OPACITY = floatPreferencesKey("aod_opacity")
+        val AOD_POSITION_PERCENT = floatPreferencesKey("aod_position_percent")
     }
 
     val showClock: Flow<Boolean> = appContext.appSettingsDataStore.data
@@ -48,6 +49,9 @@ class AppPreferences(context: Context) {
 
     val aodOpacity: Flow<Float> = appContext.appSettingsDataStore.data
         .map { prefs -> prefs[AOD_OPACITY] ?: 0.5f }
+
+    val aodPositionPercent: Flow<Float> = appContext.appSettingsDataStore.data
+        .map { prefs -> prefs[AOD_POSITION_PERCENT] ?: 5f }
 
     suspend fun setShowClock(show: Boolean) {
         appContext.appSettingsDataStore.edit { it[SHOW_CLOCK] = show }
@@ -75,5 +79,9 @@ class AppPreferences(context: Context) {
 
     suspend fun setAodOpacity(opacity: Float) {
         appContext.appSettingsDataStore.edit { it[AOD_OPACITY] = opacity }
+    }
+
+    suspend fun setAodPositionPercent(positionPercent: Float) {
+        appContext.appSettingsDataStore.edit { it[AOD_POSITION_PERCENT] = positionPercent }
     }
 }
