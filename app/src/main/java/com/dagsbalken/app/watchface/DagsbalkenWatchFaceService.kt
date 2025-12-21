@@ -98,7 +98,8 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             }
             
             // Draw the watch face
-            drawWatchFace(canvas, bounds, zonedDateTime)
+            val isAmbient = renderParameters.drawMode == androidx.wear.watchface.DrawMode.AMBIENT
+            drawWatchFace(canvas, bounds, zonedDateTime, isAmbient)
         }
 
         override fun renderHighlightLayer(
@@ -110,7 +111,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             // No highlight layer needed
         }
 
-        private fun drawWatchFace(canvas: Canvas, bounds: Rect, zonedDateTime: ZonedDateTime) {
+        private fun drawWatchFace(canvas: Canvas, bounds: Rect, zonedDateTime: ZonedDateTime, isAmbient: Boolean) {
             val centerX = bounds.exactCenterX()
             val centerY = bounds.exactCenterY()
             val width = bounds.width().toFloat()
@@ -118,7 +119,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             
             // Background
             val paint = Paint().apply {
-                isAntiAlias = true
+                isAntiAlias = !isAmbient // Disable anti-aliasing in ambient mode for battery saving
                 color = 0xFF000000.toInt()
             }
             canvas.drawRect(bounds, paint)
@@ -136,11 +137,12 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = ringWidth
-            paint.color = 0xFF444444.toInt()
+            paint.color = if (isAmbient) 0xFF666666.toInt() else 0xFF444444.toInt()
             canvas.drawCircle(centerX, centerY, ringRadius, paint)
 
             // Draw progress arc (representing elapsed time today)
-            paint.color = 0xFF6200EE.toInt()
+            // In ambient mode, use white/gray color scheme
+            paint.color = if (isAmbient) 0xFFFFFFFF.toInt() else 0xFF6200EE.toInt()
             paint.strokeCap = Paint.Cap.ROUND
             val sweepAngle = 360f * progress
             canvas.drawArc(
@@ -154,34 +156,36 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
                 paint
             )
 
-            // Draw calendar events as colored segments on the ring
-            paint.strokeCap = Paint.Cap.BUTT
-            events.forEach { event ->
-                val eventStartMinutes = event.start.hour * 60 + event.start.minute
-                val eventEnd = event.end
-                val eventEndMinutes = if (eventEnd != null) {
-                    eventEnd.hour * 60 + eventEnd.minute
-                } else {
-                    eventStartMinutes + 60 // Default 1 hour if no end time
+            // Draw calendar events only in interactive mode (not in ambient)
+            if (!isAmbient) {
+                paint.strokeCap = Paint.Cap.BUTT
+                events.forEach { event ->
+                    val eventStartMinutes = event.start.hour * 60 + event.start.minute
+                    val eventEnd = event.end
+                    val eventEndMinutes = if (eventEnd != null) {
+                        eventEnd.hour * 60 + eventEnd.minute
+                    } else {
+                        eventStartMinutes + 60 // Default 1 hour if no end time
+                    }
+                    
+                    val startAngle = (eventStartMinutes.toFloat() / totalMinutes * 360f) - 90f
+                    val eventSweep = ((eventEndMinutes - eventStartMinutes).toFloat() / totalMinutes * 360f)
+                    
+                    paint.color = event.color
+                    paint.alpha = 180
+                    paint.strokeWidth = ringWidth * 0.6f
+                    canvas.drawArc(
+                        centerX - ringRadius,
+                        centerY - ringRadius,
+                        centerX + ringRadius,
+                        centerY + ringRadius,
+                        startAngle,
+                        eventSweep,
+                        false,
+                        paint
+                    )
+                    paint.alpha = 255
                 }
-                
-                val startAngle = (eventStartMinutes.toFloat() / totalMinutes * 360f) - 90f
-                val eventSweep = ((eventEndMinutes - eventStartMinutes).toFloat() / totalMinutes * 360f)
-                
-                paint.color = event.color
-                paint.alpha = 180
-                paint.strokeWidth = ringWidth * 0.6f
-                canvas.drawArc(
-                    centerX - ringRadius,
-                    centerY - ringRadius,
-                    centerX + ringRadius,
-                    centerY + ringRadius,
-                    startAngle,
-                    eventSweep,
-                    false,
-                    paint
-                )
-                paint.alpha = 255
             }
 
             // Draw hour markers (12, 6, 9, 15, 18, 21)
@@ -208,16 +212,29 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             paint.color = 0xFFFFFFFF.toInt()
             
             val timeText = String.format("%02d:%02d", currentHour, currentMinute)
-            canvas.drawText(timeText, centerX, centerY + 20f, paint)
-
-            // Draw current time indicator (red dot on the ring)
-            val angle = (currentHour * 15f + currentMinute * 0.25f - 90f) * Math.PI.toFloat() / 180f
-            val dotX = centerX + ringRadius * kotlin.math.cos(angle)
-            val dotY = centerY + ringRadius * kotlin.math.sin(angle)
+            canvas.drawText(timeText, centerX, centerY, paint)
             
-            paint.style = Paint.Style.FILL
-            paint.color = 0xFFFF0000.toInt()
-            canvas.drawCircle(dotX, dotY, 12f, paint)
+            // Draw date below time (only in interactive mode)
+            if (!isAmbient) {
+                paint.textSize = 24f
+                val dateText = String.format(
+                    "%s %d",
+                    zonedDateTime.month.toString().substring(0, 3).lowercase().replaceFirstChar { it.uppercase() },
+                    zonedDateTime.dayOfMonth
+                )
+                canvas.drawText(dateText, centerX, centerY + 35f, paint)
+            }
+
+            // Draw current time indicator (red/white dot on the ring)
+            if (!isAmbient) {
+                val angle = (currentHour * 15f + currentMinute * 0.25f - 90f) * Math.PI.toFloat() / 180f
+                val dotX = centerX + ringRadius * kotlin.math.cos(angle)
+                val dotY = centerY + ringRadius * kotlin.math.sin(angle)
+                
+                paint.style = Paint.Style.FILL
+                paint.color = 0xFFFF0000.toInt()
+                canvas.drawCircle(dotX, dotY, 12f, paint)
+            }
         }
     }
 }
