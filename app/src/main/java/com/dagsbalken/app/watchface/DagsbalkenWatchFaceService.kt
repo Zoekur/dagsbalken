@@ -19,6 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Dagsbalken watch face service for Galaxy Watch.
@@ -62,7 +65,8 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
     ) {
         
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        private var events: List<DayEvent> = emptyList()
+        private val events = AtomicReference<List<DayEvent>>(emptyList())
+        private var lastEventReloadHour = -1
         
         class DagsbalkenSharedAssets : SharedAssets {
             override fun onDestroy() {}
@@ -78,10 +82,11 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             scope.launch(Dispatchers.IO) {
                 try {
                     val calendarRepo = CalendarRepository(context)
-                    events = calendarRepo.getEventsForToday()
+                    val loadedEvents = calendarRepo.getEventsForToday()
+                    events.set(loadedEvents)
                 } catch (e: Exception) {
                     // Handle permission issues gracefully
-                    events = emptyList()
+                    events.set(emptyList())
                 }
             }
         }
@@ -92,8 +97,10 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             zonedDateTime: ZonedDateTime,
             sharedAssets: DagsbalkenSharedAssets
         ) {
-            // Reload events every hour
-            if (zonedDateTime.minute == 0) {
+            // Reload events once per hour (throttled)
+            val currentHour = zonedDateTime.hour
+            if (currentHour != lastEventReloadHour) {
+                lastEventReloadHour = currentHour
                 loadEvents()
             }
             
@@ -159,7 +166,8 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             // Draw calendar events only in interactive mode (not in ambient)
             if (!isAmbient) {
                 paint.strokeCap = Paint.Cap.BUTT
-                events.forEach { event ->
+                val currentEvents = events.get()
+                currentEvents.forEach { event ->
                     val eventStartMinutes = event.start.hour * 60 + event.start.minute
                     val eventEnd = event.end
                     val eventEndMinutes = if (eventEnd != null) {
@@ -211,15 +219,17 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             paint.textAlign = Paint.Align.CENTER
             paint.color = 0xFFFFFFFF.toInt()
             
-            val timeText = String.format("%02d:%02d", currentHour, currentMinute)
+            val timeText = String.format(Locale.getDefault(), "%02d:%02d", currentHour, currentMinute)
             canvas.drawText(timeText, centerX, centerY, paint)
             
             // Draw date below time (only in interactive mode)
             if (!isAmbient) {
                 paint.textSize = 24f
+                val monthFormatter = DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
                 val dateText = String.format(
+                    Locale.getDefault(),
                     "%s %d",
-                    zonedDateTime.month.toString().substring(0, 3).lowercase().replaceFirstChar { it.uppercase() },
+                    zonedDateTime.format(monthFormatter),
                     zonedDateTime.dayOfMonth
                 )
                 canvas.drawText(dateText, centerX, centerY + 35f, paint)
