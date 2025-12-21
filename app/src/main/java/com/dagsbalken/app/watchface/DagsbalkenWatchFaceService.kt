@@ -12,11 +12,17 @@ import androidx.wear.watchface.WatchFaceService
 import androidx.wear.watchface.WatchFaceType
 import androidx.wear.watchface.WatchState
 import androidx.wear.watchface.style.CurrentUserStyleRepository
+import com.dagsbalken.core.data.CalendarRepository
+import com.dagsbalken.core.data.DayEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
 
 /**
  * Dagsbalken watch face service for Galaxy Watch.
- * Shows a linear 24-hour timeline with events.
+ * Shows a circular 24-hour timeline with events.
  */
 class DagsbalkenWatchFaceService : WatchFaceService() {
 
@@ -28,6 +34,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
     ): WatchFace {
         // Create the renderer
         val renderer = DagsbalkenRenderer(
+            context = this,
             surfaceHolder = surfaceHolder,
             watchState = watchState,
             currentUserStyleRepository = currentUserStyleRepository
@@ -41,6 +48,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
     }
 
     private class DagsbalkenRenderer(
+        private val context: WatchFaceService,
         surfaceHolder: SurfaceHolder,
         watchState: WatchState,
         currentUserStyleRepository: CurrentUserStyleRepository
@@ -53,12 +61,29 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
         clearWithBackgroundTintBeforeRenderingHighlightLayer = false
     ) {
         
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        private var events: List<DayEvent> = emptyList()
+        
         class DagsbalkenSharedAssets : SharedAssets {
             override fun onDestroy() {}
         }
 
         override suspend fun createSharedAssets(): DagsbalkenSharedAssets {
+            // Load calendar events
+            loadEvents()
             return DagsbalkenSharedAssets()
+        }
+
+        private fun loadEvents() {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val calendarRepo = CalendarRepository(context)
+                    events = calendarRepo.getEventsForToday()
+                } catch (e: Exception) {
+                    // Handle permission issues gracefully
+                    events = emptyList()
+                }
+            }
         }
 
         override fun render(
@@ -67,6 +92,11 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             zonedDateTime: ZonedDateTime,
             sharedAssets: DagsbalkenSharedAssets
         ) {
+            // Reload events every hour
+            if (zonedDateTime.minute == 0) {
+                loadEvents()
+            }
+            
             // Draw the watch face
             drawWatchFace(canvas, bounds, zonedDateTime)
         }
@@ -109,7 +139,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             paint.color = 0xFF444444.toInt()
             canvas.drawCircle(centerX, centerY, ringRadius, paint)
 
-            // Draw progress arc
+            // Draw progress arc (representing elapsed time today)
             paint.color = 0xFF6200EE.toInt()
             paint.strokeCap = Paint.Cap.ROUND
             val sweepAngle = 360f * progress
@@ -124,13 +154,44 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
                 paint
             )
 
-            // Draw hour markers
+            // Draw calendar events as colored segments on the ring
+            paint.strokeCap = Paint.Cap.BUTT
+            events.forEach { event ->
+                val eventStartMinutes = event.start.hour * 60 + event.start.minute
+                val eventEnd = event.end
+                val eventEndMinutes = if (eventEnd != null) {
+                    eventEnd.hour * 60 + eventEnd.minute
+                } else {
+                    eventStartMinutes + 60 // Default 1 hour if no end time
+                }
+                
+                val startAngle = (eventStartMinutes.toFloat() / totalMinutes * 360f) - 90f
+                val eventSweep = ((eventEndMinutes - eventStartMinutes).toFloat() / totalMinutes * 360f)
+                
+                paint.color = event.color
+                paint.alpha = 180
+                paint.strokeWidth = ringWidth * 0.6f
+                canvas.drawArc(
+                    centerX - ringRadius,
+                    centerY - ringRadius,
+                    centerX + ringRadius,
+                    centerY + ringRadius,
+                    startAngle,
+                    eventSweep,
+                    false,
+                    paint
+                )
+                paint.alpha = 255
+            }
+
+            // Draw hour markers (12, 6, 9, 15, 18, 21)
             paint.strokeWidth = 3f
+            paint.strokeCap = Paint.Cap.ROUND
             paint.color = 0xFFFFFFFF.toInt()
-            for (hour in 0 until 24 step 3) {
+            for (hour in listOf(0, 6, 9, 12, 15, 18, 21)) {
                 val angle = (hour * 15f - 90f) * Math.PI.toFloat() / 180f
-                val innerRadius = ringRadius - ringWidth / 2f - 10f
-                val outerRadius = ringRadius - ringWidth / 2f + 10f
+                val innerRadius = ringRadius - ringWidth / 2f - 15f
+                val outerRadius = ringRadius - ringWidth / 2f + 15f
                 
                 val x1 = centerX + innerRadius * kotlin.math.cos(angle)
                 val y1 = centerY + innerRadius * kotlin.math.sin(angle)
