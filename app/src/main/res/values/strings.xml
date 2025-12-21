@@ -6,4 +6,6 @@
     <string name="widget_weather_description">Visar aktuell temperatur och väderlek.</string>
     <string name="widget_clothing_name">Dagsbalken: Klädsel</string>
     <string name="widget_clothing_description">Visar rekommenderad klädsel baserat på vädret.</string>
+    <string name="watch_face_name">Dagsbalken</string>
+    <string name="watch_face_description">En linjär tidslinje för Galaxy Watch som visar dagens händelser.</string>
 </resources>
