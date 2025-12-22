@@ -1,8 +1,12 @@
 package com.dagsbalken.app.watchface
 
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.Shader
 import android.view.SurfaceHolder
 import androidx.wear.watchface.CanvasType
 import androidx.wear.watchface.ComplicationSlotsManager
@@ -12,6 +16,10 @@ import androidx.wear.watchface.WatchFaceService
 import androidx.wear.watchface.WatchFaceType
 import androidx.wear.watchface.WatchState
 import androidx.wear.watchface.style.CurrentUserStyleRepository
+import androidx.wear.watchface.style.UserStyleSchema
+import androidx.wear.watchface.style.UserStyleSetting
+import androidx.wear.watchface.style.WatchFaceLayer
+import com.dagsbalken.app.R
 import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.DayEvent
 import kotlinx.coroutines.CoroutineScope
@@ -22,12 +30,121 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Dagsbalken watch face service for Galaxy Watch.
- * Shows a circular 24-hour timeline with events.
+ * Shows a horizontal curved timeline with day/night gradient and events.
  */
 class DagsbalkenWatchFaceService : WatchFaceService() {
+
+    companion object {
+        // User style setting IDs
+        const val THEME_STYLE_SETTING = "theme_setting"
+        const val AOD_POSITION_SETTING = "aod_position_setting"
+        const val SHOW_EVENTS_SETTING = "show_events_setting"
+        
+        // Theme options
+        const val THEME_COLD = "cold"
+        const val THEME_WARM = "warm"
+        const val THEME_COLD_HC = "cold_hc"
+        const val THEME_WARM_HC = "warm_hc"
+        
+        // AOD position options
+        const val AOD_POS_TOP = "top"
+        const val AOD_POS_MIDDLE = "middle"
+        const val AOD_POS_BOTTOM = "bottom"
+    }
+
+    override fun createUserStyleSchema(): UserStyleSchema {
+        // Theme setting
+        val themeSetting = UserStyleSetting.ListUserStyleSetting(
+            UserStyleSetting.Id(THEME_STYLE_SETTING),
+            resources,
+            R.string.theme_setting_name,
+            R.string.theme_setting_description,
+            null,
+            listOf(
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(THEME_COLD),
+                    resources,
+                    R.string.theme_cold,
+                    R.string.theme_cold,
+                    null
+                ),
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(THEME_WARM),
+                    resources,
+                    R.string.theme_warm,
+                    R.string.theme_warm,
+                    null
+                ),
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(THEME_COLD_HC),
+                    resources,
+                    R.string.theme_cold_hc,
+                    R.string.theme_cold_hc,
+                    null
+                ),
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(THEME_WARM_HC),
+                    resources,
+                    R.string.theme_warm_hc,
+                    R.string.theme_warm_hc,
+                    null
+                )
+            ),
+            WatchFaceLayer.ALL_WATCH_FACE_LAYERS
+        )
+        
+        // AOD Position setting
+        val aodPositionSetting = UserStyleSetting.ListUserStyleSetting(
+            UserStyleSetting.Id(AOD_POSITION_SETTING),
+            resources,
+            R.string.aod_position_setting_name,
+            R.string.aod_position_setting_description,
+            null,
+            listOf(
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(AOD_POS_TOP),
+                    resources,
+                    R.string.aod_position_top,
+                    R.string.aod_position_top,
+                    null
+                ),
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(AOD_POS_MIDDLE),
+                    resources,
+                    R.string.aod_position_middle,
+                    R.string.aod_position_middle,
+                    null
+                ),
+                UserStyleSetting.ListUserStyleSetting.ListOption(
+                    UserStyleSetting.Option.Id(AOD_POS_BOTTOM),
+                    resources,
+                    R.string.aod_position_bottom,
+                    R.string.aod_position_bottom,
+                    null
+                )
+            ),
+            WatchFaceLayer.ALL_WATCH_FACE_LAYERS
+        )
+        
+        // Show events toggle
+        val showEventsSetting = UserStyleSetting.BooleanUserStyleSetting(
+            UserStyleSetting.Id(SHOW_EVENTS_SETTING),
+            resources,
+            R.string.show_events_setting_name,
+            R.string.show_events_setting_description,
+            null,
+            WatchFaceLayer.ALL_WATCH_FACE_LAYERS,
+            true
+        )
+        
+        return UserStyleSchema(listOf(themeSetting, aodPositionSetting, showEventsSetting))
+    }
 
     override suspend fun createWatchFace(
         surfaceHolder: SurfaceHolder,
@@ -40,7 +157,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             context = this,
             surfaceHolder = surfaceHolder,
             watchState = watchState,
-            currentUserStyleRepository = currentUserStyleRepository
+            userStyleRepository = currentUserStyleRepository
         )
 
         // Create the watch face
@@ -54,10 +171,10 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
         private val context: WatchFaceService,
         surfaceHolder: SurfaceHolder,
         watchState: WatchState,
-        currentUserStyleRepository: CurrentUserStyleRepository
+        private val userStyleRepository: CurrentUserStyleRepository
     ) : Renderer.CanvasRenderer2<DagsbalkenRenderer.DagsbalkenSharedAssets>(
         surfaceHolder = surfaceHolder,
-        currentUserStyleRepository = currentUserStyleRepository,
+        currentUserStyleRepository = userStyleRepository,
         watchState = watchState,
         canvasType = CanvasType.HARDWARE,
         interactiveDrawModeUpdateDelayMillis = 60_000L, // Update every minute
@@ -124,10 +241,32 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             val width = bounds.width().toFloat()
             val height = bounds.height().toFloat()
             
+            // Get user style settings
+            val selectedTheme = when (userStyleRepository.userStyle.value[
+                UserStyleSetting.Id(THEME_STYLE_SETTING)
+            ]?.toString()) {
+                THEME_WARM -> ThemeColors.Warm
+                THEME_COLD_HC -> ThemeColors.ColdHighContrast
+                THEME_WARM_HC -> ThemeColors.WarmHighContrast
+                else -> ThemeColors.Cold
+            }
+            
+            val aodPosition = when (userStyleRepository.userStyle.value[
+                UserStyleSetting.Id(AOD_POSITION_SETTING)
+            ]?.toString()) {
+                AOD_POS_TOP -> 0.3f
+                AOD_POS_BOTTOM -> 0.7f
+                else -> 0.5f // Middle
+            }
+            
+            val showEvents = userStyleRepository.userStyle.value[
+                UserStyleSetting.Id(SHOW_EVENTS_SETTING)
+            ]?.toString() != "false"
+            
             // Background
             val paint = Paint().apply {
-                isAntiAlias = !isAmbient // Disable anti-aliasing in ambient mode for battery saving
-                color = 0xFF000000.toInt()
+                isAntiAlias = !isAmbient
+                color = if (isAmbient) 0xFF000000.toInt() else selectedTheme.background
             }
             canvas.drawRect(bounds, paint)
 
@@ -138,34 +277,99 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             val totalMinutes = 24 * 60
             val progress = currentMinutes.toFloat() / totalMinutes
 
-            // Draw circular timeline (outer ring)
-            val ringRadius = minOf(width, height) / 2f * 0.85f
-            val ringWidth = 20f
+            if (isAmbient) {
+                // Simplified AOD mode - just time display
+                drawAmbientMode(canvas, bounds, zonedDateTime, selectedTheme, aodPosition, paint)
+            } else {
+                // Full interactive mode - timeline with gradient and events
+                drawInteractiveMode(canvas, bounds, zonedDateTime, selectedTheme, showEvents, paint)
+            }
+        }
+        
+        private fun drawAmbientMode(
+            canvas: Canvas, 
+            bounds: Rect, 
+            zonedDateTime: ZonedDateTime,
+            theme: ThemeColors,
+            verticalPosition: Float,
+            paint: Paint
+        ) {
+            val centerX = bounds.exactCenterX()
+            val centerY = bounds.height() * verticalPosition
             
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = ringWidth
-            paint.color = if (isAmbient) 0xFF666666.toInt() else 0xFF444444.toInt()
-            canvas.drawCircle(centerX, centerY, ringRadius, paint)
-
-            // Draw progress arc (representing elapsed time today)
-            // In ambient mode, use white/gray color scheme
-            paint.color = if (isAmbient) 0xFFFFFFFF.toInt() else 0xFF6200EE.toInt()
-            paint.strokeCap = Paint.Cap.ROUND
-            val sweepAngle = 360f * progress
-            canvas.drawArc(
-                centerX - ringRadius,
-                centerY - ringRadius,
-                centerX + ringRadius,
-                centerY + ringRadius,
-                -90f, // Start at top (12 o'clock)
-                sweepAngle,
-                false,
-                paint
+            // Draw simple timeline bar at bottom
+            val barHeight = 40f
+            val barTop = bounds.height() * 0.8f
+            val barBottom = barTop + barHeight
+            
+            paint.color = 0xFF333333.toInt()
+            paint.style = Paint.Style.FILL
+            canvas.drawRect(0f, barTop, bounds.width().toFloat(), barBottom, paint)
+            
+            // Draw progress on timeline
+            val currentMinutes = zonedDateTime.hour * 60 + zonedDateTime.minute
+            val progress = currentMinutes.toFloat() / (24 * 60)
+            paint.color = 0xFFFFFFFF.toInt()
+            canvas.drawRect(0f, barTop, bounds.width() * progress, barBottom, paint)
+            
+            // Draw current time indicator line
+            val currentX = bounds.width() * progress
+            paint.strokeWidth = 4f
+            canvas.drawLine(currentX, barTop - 20f, currentX, barBottom, paint)
+            
+            // Draw digital time in center
+            paint.style = Paint.Style.FILL
+            paint.textSize = 56f
+            paint.textAlign = Paint.Align.CENTER
+            paint.color = 0xFFFFFFFF.toInt()
+            
+            val timeText = String.format(Locale.getDefault(), "%02d:%02d", 
+                zonedDateTime.hour, zonedDateTime.minute)
+            canvas.drawText(timeText, centerX, centerY, paint)
+        }
+        
+        private fun drawInteractiveMode(
+            canvas: Canvas,
+            bounds: Rect,
+            zonedDateTime: ZonedDateTime,
+            theme: ThemeColors,
+            showEvents: Boolean,
+            paint: Paint
+        ) {
+            val centerX = bounds.exactCenterX()
+            val width = bounds.width().toFloat()
+            val height = bounds.height().toFloat()
+            
+            // Timeline bar parameters
+            val timelineHeight = 100f
+            val timelineTop = height * 0.65f
+            val timelineBottom = timelineTop + timelineHeight
+            
+            val currentMinutes = zonedDateTime.hour * 60 + zonedDateTime.minute
+            val totalMinutes = 24 * 60
+            val progress = currentMinutes.toFloat() / totalMinutes
+            
+            // Draw day/night gradient background on timeline
+            paint.shader = LinearGradient(
+                0f, 0f, width, 0f,
+                intArrayOf(
+                    theme.nightColor,
+                    theme.dayColor,
+                    theme.nightColor
+                ),
+                floatArrayOf(0f, 0.5f, 1.0f),
+                Shader.TileMode.CLAMP
             )
-
-            // Draw calendar events only in interactive mode (not in ambient)
-            if (!isAmbient) {
-                paint.strokeCap = Paint.Cap.BUTT
+            paint.style = Paint.Style.FILL
+            canvas.drawRect(0f, timelineTop, width, timelineBottom, paint)
+            paint.shader = null
+            
+            // Draw "passed time" overlay (semi-transparent gray)
+            paint.color = 0x88333333.toInt()
+            canvas.drawRect(0f, timelineTop, width * progress, timelineBottom, paint)
+            
+            // Draw calendar events
+            if (showEvents) {
                 val currentEvents = events.get()
                 currentEvents.forEach { event ->
                     val eventStartMinutes = event.start.hour * 60 + event.start.minute
@@ -173,77 +377,135 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
                     val eventEndMinutes = if (eventEnd != null) {
                         eventEnd.hour * 60 + eventEnd.minute
                     } else {
-                        eventStartMinutes + 60 // Default 1 hour if no end time
+                        eventStartMinutes + 60
                     }
                     
-                    val startAngle = (eventStartMinutes.toFloat() / totalMinutes * 360f) - 90f
-                    val eventSweep = ((eventEndMinutes - eventStartMinutes).toFloat() / totalMinutes * 360f)
+                    val startX = (eventStartMinutes.toFloat() / totalMinutes) * width
+                    val endX = (eventEndMinutes.toFloat() / totalMinutes) * width
                     
                     paint.color = event.color
-                    paint.alpha = 180
-                    paint.strokeWidth = ringWidth * 0.6f
-                    canvas.drawArc(
-                        centerX - ringRadius,
-                        centerY - ringRadius,
-                        centerX + ringRadius,
-                        centerY + ringRadius,
-                        startAngle,
-                        eventSweep,
-                        false,
-                        paint
-                    )
+                    paint.alpha = 200
+                    paint.style = Paint.Style.FILL
+                    
+                    // Draw event block with padding
+                    val eventTop = timelineTop + timelineHeight * 0.15f
+                    val eventBottom = timelineBottom - timelineHeight * 0.15f
+                    canvas.drawRect(startX, eventTop, endX, eventBottom, paint)
                     paint.alpha = 255
                 }
             }
-
-            // Draw hour markers (12, 6, 9, 15, 18, 21)
-            paint.strokeWidth = 3f
-            paint.strokeCap = Paint.Cap.ROUND
+            
+            // Draw hour markers
             paint.color = 0xFFFFFFFF.toInt()
-            for (hour in listOf(0, 6, 9, 12, 15, 18, 21)) {
-                val angle = (hour * 15f - 90f) * Math.PI.toFloat() / 180f
-                val innerRadius = ringRadius - ringWidth / 2f - 15f
-                val outerRadius = ringRadius - ringWidth / 2f + 15f
-                
-                val x1 = centerX + innerRadius * kotlin.math.cos(angle)
-                val y1 = centerY + innerRadius * kotlin.math.sin(angle)
-                val x2 = centerX + outerRadius * kotlin.math.cos(angle)
-                val y2 = centerY + outerRadius * kotlin.math.sin(angle)
-                
-                canvas.drawLine(x1, y1, x2, y2, paint)
+            paint.strokeWidth = 2f
+            paint.alpha = 150
+            for (hour in 0..23 step 3) {
+                val x = (hour * 60f / totalMinutes) * width
+                canvas.drawLine(x, timelineTop, x, timelineTop + 20f, paint)
+                canvas.drawLine(x, timelineBottom - 20f, x, timelineBottom, paint)
             }
-
-            // Draw digital time in center
+            paint.alpha = 255
+            
+            // Draw current time indicator (red line)
+            val currentX = width * progress
+            paint.color = theme.accentColor
+            paint.strokeWidth = 6f
+            paint.style = Paint.Style.STROKE
+            canvas.drawLine(currentX, timelineTop - 30f, currentX, timelineBottom + 10f, paint)
+            
+            // Draw current time dot above timeline
             paint.style = Paint.Style.FILL
-            paint.textSize = 60f
-            paint.textAlign = Paint.Align.CENTER
+            canvas.drawCircle(currentX, timelineTop - 50f, 16f, paint)
+            
+            // Draw digital time above timeline
             paint.color = 0xFFFFFFFF.toInt()
+            paint.textSize = 64f
+            paint.textAlign = Paint.Align.CENTER
+            paint.style = Paint.Style.FILL
             
-            val timeText = String.format(Locale.getDefault(), "%02d:%02d", currentHour, currentMinute)
-            canvas.drawText(timeText, centerX, centerY, paint)
+            val timeText = String.format(Locale.getDefault(), "%02d:%02d", 
+                zonedDateTime.hour, zonedDateTime.minute)
+            canvas.drawText(timeText, centerX, height * 0.45f, paint)
             
-            // Draw date below time (only in interactive mode)
-            if (!isAmbient) {
-                paint.textSize = 24f
-                val monthFormatter = DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
-                val dateText = String.format(
-                    Locale.getDefault(),
-                    "%s %d",
-                    zonedDateTime.format(monthFormatter),
-                    zonedDateTime.dayOfMonth
+            // Draw date below time
+            paint.textSize = 24f
+            val monthFormatter = DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
+            val dateText = String.format(
+                Locale.getDefault(),
+                "%s %d",
+                zonedDateTime.format(monthFormatter),
+                zonedDateTime.dayOfMonth
+            )
+            canvas.drawText(dateText, centerX, height * 0.45f + 35f, paint)
+            
+            // Draw sunrise/sunset indicators if in typical time ranges
+            drawSunMoonIndicators(canvas, width, timelineTop, timelineBottom, totalMinutes, paint)
+        }
+        
+        private fun drawSunMoonIndicators(
+            canvas: Canvas,
+            width: Float,
+            timelineTop: Float,
+            timelineBottom: Float,
+            totalMinutes: Int,
+            paint: Paint
+        ) {
+            // Sunrise around 08:00 (480 minutes)
+            val sunriseMinutes = 480f
+            val sunriseX = (sunriseMinutes / totalMinutes) * width
+            
+            // Sunset around 20:00 (1200 minutes)
+            val sunsetMinutes = 1200f
+            val sunsetX = (sunsetMinutes / totalMinutes) * width
+            
+            val indicatorY = timelineTop - 10f
+            val indicatorRadius = 12f
+            
+            // Sunrise (yellow/orange circle)
+            paint.color = 0xFFFFB300.toInt()
+            paint.style = Paint.Style.FILL
+            canvas.drawCircle(sunriseX, indicatorY, indicatorRadius, paint)
+            
+            // Sunset (orange/red circle)
+            paint.color = 0xFFFF6D00.toInt()
+            canvas.drawCircle(sunsetX, indicatorY, indicatorRadius, paint)
+        }
+        
+        // Theme colors data class
+        data class ThemeColors(
+            val background: Int,
+            val nightColor: Int,
+            val dayColor: Int,
+            val accentColor: Int
+        ) {
+            companion object {
+                val Cold = ThemeColors(
+                    background = 0xFF000000.toInt(),
+                    nightColor = 0xFF1A237E.toInt(), // Deep Blue
+                    dayColor = 0xFF4FC3F7.toInt(),   // Light Blue
+                    accentColor = 0xFFFF0000.toInt()
                 )
-                canvas.drawText(dateText, centerX, centerY + 35f, paint)
-            }
-
-            // Draw current time indicator (red/white dot on the ring)
-            if (!isAmbient) {
-                val angle = (currentHour * 15f + currentMinute * 0.25f - 90f) * Math.PI.toFloat() / 180f
-                val dotX = centerX + ringRadius * kotlin.math.cos(angle)
-                val dotY = centerY + ringRadius * kotlin.math.sin(angle)
                 
-                paint.style = Paint.Style.FILL
-                paint.color = 0xFFFF0000.toInt()
-                canvas.drawCircle(dotX, dotY, 12f, paint)
+                val Warm = ThemeColors(
+                    background = 0xFF000000.toInt(),
+                    nightColor = 0xFFBF360C.toInt(), // Deep Orange
+                    dayColor = 0xFFFFEB3B.toInt(),   // Yellow
+                    accentColor = 0xFFFF0000.toInt()
+                )
+                
+                val ColdHighContrast = ThemeColors(
+                    background = 0xFF000000.toInt(),
+                    nightColor = 0xFF000000.toInt(),
+                    dayColor = 0xFF00FFFF.toInt(),   // Cyan
+                    accentColor = 0xFFFFFF00.toInt() // Yellow
+                )
+                
+                val WarmHighContrast = ThemeColors(
+                    background = 0xFF000000.toInt(),
+                    nightColor = 0xFF000000.toInt(),
+                    dayColor = 0xFFFFFF00.toInt(),   // Yellow
+                    accentColor = 0xFFFF6D00.toInt() // Orange
+                )
             }
         }
     }
