@@ -4,6 +4,9 @@
 # Build output
 build/
 
+# Kotlin build cache
+.kotlin/
+
 # Android Studio generated files
 *.iml
 .idea/
