@@ -3,7 +3,6 @@ package com.dagsbalken.wear.watchface
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
@@ -29,9 +28,6 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * Dagsbalken watch face service for Galaxy Watch.
@@ -251,7 +247,7 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             canvas.drawRect(bounds, paint)
 
             if (isAmbient) {
-                drawAmbientMode(canvas, bounds, zonedDateTime, selectedTheme, aodPosition, paint)
+                drawAmbientMode(canvas, bounds, zonedDateTime, aodPosition, paint)
             } else {
                 drawInteractiveMode(canvas, bounds, zonedDateTime, selectedTheme, showEvents, paint)
             }
@@ -261,7 +257,6 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             canvas: Canvas,
             bounds: Rect,
             zonedDateTime: ZonedDateTime,
-            theme: ThemeColors,
             verticalPosition: Float,
             paint: Paint
         ) {
@@ -352,8 +347,8 @@ class DagsbalkenWatchFaceService : WatchFaceService() {
             paint.color = theme.eventColor
 
             for (event in currentEvents) {
-                val startMinutes = event.startTime.hour * 60 + event.startTime.minute
-                val endMinutes = event.endTime.hour * 60 + event.endTime.minute
+                val startMinutes = event.start.hour * 60 + event.start.minute
+                val endMinutes = (event.end ?: event.start).let { it.hour * 60 + it.minute }
 
                 val startX = width * (startMinutes.toFloat() / (24 * 60))
                 val endX = width * (endMinutes.toFloat() / (24 * 60))
@@ -431,4 +426,3 @@ private sealed class ThemeColors(
         textColor = 0xFFFFFFFF.toInt()
     )
 }
-

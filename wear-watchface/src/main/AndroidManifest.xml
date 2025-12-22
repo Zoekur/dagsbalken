@@ -6,17 +6,30 @@
         android:required="true" />
 
     <application
-        android:allowBackup="false"
         android:label="@string/app_name"
-        android:icon="@mipmap/ic_launcher"
-        android:supportsRtl="true">
+        android:icon="@mipmap/ic_launcher">
 
+        <activity
+            android:name=".WatchFaceInstallerActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".WatchFaceDebugActivity"
+            android:exported="true"
+            android:label="WatchFace Debug" />
+
+        <!-- A watch face APK is typically NOT a standalone wearable app. -->
         <meta-data
             android:name="com.google.android.wearable.standalone"
-            android:value="true" />
+            android:value="false" />
 
         <service
-            android:name="com.dagsbalken.wear.watchface.DagsbalkenWatchFaceService"
+            android:name=".DagsbalkenWatchFaceService"
             android:directBootAware="true"
             android:exported="true"
             android:label="@string/watch_face_name"
@@ -31,10 +44,10 @@
                 android:resource="@xml/watch_face" />
             <meta-data
                 android:name="com.google.android.wearable.watchface.preview"
-                android:resource="@mipmap/ic_launcher" />
+                android:resource="@drawable/watchface_preview" />
             <meta-data
                 android:name="com.google.android.wearable.watchface.preview_circular"
-                android:resource="@mipmap/ic_launcher" />
+                android:resource="@drawable/watchface_preview" />
         </service>
 
     </application>
