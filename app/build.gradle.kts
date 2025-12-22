@@ -94,13 +94,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     // Wear OS (för Galaxy Watch face)
-    implementation(libs.androidx.wear.watchface)
-    implementation(libs.androidx.wear.watchface.complications.rendering)
-    implementation(libs.androidx.wear.watchface.data)
-    implementation(libs.androidx.wear.watchface.style)
-    implementation(libs.androidx.wear.watchface.editor)
-    implementation(libs.androidx.wear.compose.material)
-    implementation(libs.androidx.wear.compose.foundation)
+    // (moved to :wear-watchface module)
 
     // Testbibliotek
     testImplementation(libs.junit)

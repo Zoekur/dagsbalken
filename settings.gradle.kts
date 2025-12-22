@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 rootProject.name = "Dagsbalken"
 include(":app")
 include(":core")
+include(":wear-watchface")
