@@ -7,9 +7,17 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Declare this as a Wear OS watch app -->
+    <!-- Wear feature should be optional in the phone APK; watchface can still be provided. -->
     <uses-feature
         android:name="android.hardware.type.watch"
+        android:required="true" />
+
+    <!-- Explicitly mark common hardware as optional for Wear devices/emulators -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
         android:required="false" />
 
     <application
@@ -19,15 +27,19 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.Dagsbalken">
+
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
+
+        <!-- Wear support library makes the APK recognized as a watch app by tooling. -->
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="false" />
+
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-
+            android:exported="true" />
 
         <receiver
             android:name=".widget.LinearClockWidgetReceiver"
