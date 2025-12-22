@@ -8,4 +8,21 @@
     <string name="widget_clothing_description">Visar rekommenderad klädsel baserat på vädret.</string>
     <string name="watch_face_name">Dagsbalken</string>
     <string name="watch_face_description">En linjär tidslinje för Galaxy Watch som visar dagens händelser.</string>
+    
+    <!-- Watch Face User Style Settings -->
+    <string name="theme_setting_name">Tema</string>
+    <string name="theme_setting_description">Välj färgtema för urtavlan</string>
+    <string name="theme_cold">Kall</string>
+    <string name="theme_warm">Varm</string>
+    <string name="theme_cold_hc">Kall (Hög kontrast)</string>
+    <string name="theme_warm_hc">Varm (Hög kontrast)</string>
+    
+    <string name="aod_position_setting_name">AOD-position</string>
+    <string name="aod_position_setting_description">Position för viloläge</string>
+    <string name="aod_position_top">Topp</string>
+    <string name="aod_position_middle">Mitten</string>
+    <string name="aod_position_bottom">Botten</string>
+    
+    <string name="show_events_setting_name">Visa händelser</string>
+    <string name="show_events_setting_description">Visa kalenderhändelser på tidslinjen</string>
 </resources>
