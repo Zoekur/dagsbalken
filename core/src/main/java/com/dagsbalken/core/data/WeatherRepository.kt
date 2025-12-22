@@ -1,6 +1,7 @@
 package com.dagsbalken.core.data
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
@@ -411,7 +412,7 @@ class WeatherRepository(private val context: Context) {
                         val providers = lm.getProviders(true)
                         var best: Location? = null
                         for (p in providers) {
-                            val l = try { lm.getLastKnownLocation(p) } catch (_: SecurityException) { null }
+                            val l = safeGetLastKnownLocation(lm, p)
                             if (l != null && (best == null || l.accuracy < best.accuracy)) {
                                 best = l
                             }
@@ -420,7 +421,7 @@ class WeatherRepository(private val context: Context) {
                             lat = best.latitude
                             lon = best.longitude
 
-                            // Reverse-geocode via Nominatim instead of Android Geocoder (with cache)
+                            // Reverse-geocode via Nominatim istället för Android Geocoder (med cache)
                             val cached = getReverseCache(lat!!, lon!!)
                             if (cached != null) {
                                 locationName = cached.displayName
@@ -487,10 +488,10 @@ class WeatherRepository(private val context: Context) {
                                         val arr = JSONArray(body)
                                         if (arr.length() > 0) {
                                             val first = arr.getJSONObject(0)
-                                            val latStr = first.optString("lat", null)
-                                            val lonStr = first.optString("lon", null)
-                                            val parsedLat = latStr?.toDoubleOrNull() ?: first.optDouble("lat", Double.NaN)
-                                            val parsedLon = lonStr?.toDoubleOrNull() ?: first.optDouble("lon", Double.NaN)
+                                            val latStr = first.optString("lat", "")
+                                            val lonStr = first.optString("lon", "")
+                                            val parsedLat = latStr.toDoubleOrNull() ?: first.optDouble("lat", Double.NaN)
+                                            val parsedLon = lonStr.toDoubleOrNull() ?: first.optDouble("lon", Double.NaN)
                                             if (!parsedLat.isNaN() && !parsedLon.isNaN()) {
                                                 lat = parsedLat
                                                 lon = parsedLon
@@ -602,6 +603,15 @@ class WeatherRepository(private val context: Context) {
                 "👕",
                 "NORMAL"
             )
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun safeGetLastKnownLocation(lm: LocationManager, provider: String): Location? {
+        return try {
+            lm.getLastKnownLocation(provider)
+        } catch (_: SecurityException) {
+            null
         }
     }
 }
