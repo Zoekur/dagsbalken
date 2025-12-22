@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="installer_message">Dagsbalken Watch Face är installerad.\n\nÖppna urtavlor på klockan och välj Dagsbalken.</string>
+    <string name="open_watch_faces">Öppna urtavlor</string>
+    <string name="app_info">Appinfo</string>
+</resources>
