@@ -36,7 +36,13 @@ class TimerRepository(private val context: Context) {
 
     suspend fun saveTimerTemplate(timer: TimerModel) {
         context.timerDataStore.edit { preferences ->
-            val currentList = deserializeTimerTemplates(preferences[TIMER_TEMPLATES_KEY] ?: "[]").toMutableList()
+            val currentList = try {
+                deserializeTimerTemplates(preferences[TIMER_TEMPLATES_KEY] ?: "[]").toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted templates found, resetting list", e)
+                mutableListOf()
+            }
+
             val index = currentList.indexOfFirst { it.id == timer.id }
             if (index != -1) {
                 currentList[index] = timer
@@ -49,7 +55,12 @@ class TimerRepository(private val context: Context) {
 
     suspend fun deleteTimerTemplate(timerId: String) {
         context.timerDataStore.edit { preferences ->
-            val currentList = deserializeTimerTemplates(preferences[TIMER_TEMPLATES_KEY] ?: "[]").toMutableList()
+            val currentList = try {
+                deserializeTimerTemplates(preferences[TIMER_TEMPLATES_KEY] ?: "[]").toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted templates found, resetting list", e)
+                mutableListOf()
+            }
             currentList.removeAll { it.id == timerId }
             preferences[TIMER_TEMPLATES_KEY] = serializeTimerTemplates(currentList)
         }
@@ -72,7 +83,6 @@ class TimerRepository(private val context: Context) {
 
     private fun deserializeTimerTemplates(jsonString: String): List<TimerModel> {
         val list = mutableListOf<TimerModel>()
-        // Throw exception if parsing fails to abort transaction in save/delete operations
         val jsonArray = JSONArray(jsonString)
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
@@ -104,7 +114,12 @@ class TimerRepository(private val context: Context) {
 
     suspend fun addActiveTimer(block: CustomBlock) {
         context.timerDataStore.edit { preferences ->
-            val currentList = deserializeActiveTimers(preferences[ACTIVE_TIMERS_KEY] ?: "[]").toMutableList()
+            val currentList = try {
+                deserializeActiveTimers(preferences[ACTIVE_TIMERS_KEY] ?: "[]").toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted active timers found, resetting list", e)
+                mutableListOf()
+            }
             currentList.add(block)
             preferences[ACTIVE_TIMERS_KEY] = serializeActiveTimers(currentList)
         }
@@ -112,7 +127,12 @@ class TimerRepository(private val context: Context) {
 
     suspend fun removeActiveTimer(blockId: String) {
         context.timerDataStore.edit { preferences ->
-            val currentList = deserializeActiveTimers(preferences[ACTIVE_TIMERS_KEY] ?: "[]").toMutableList()
+            val currentList = try {
+                deserializeActiveTimers(preferences[ACTIVE_TIMERS_KEY] ?: "[]").toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted active timers found, resetting list", e)
+                mutableListOf()
+            }
             currentList.removeAll { it.id == blockId }
             preferences[ACTIVE_TIMERS_KEY] = serializeActiveTimers(currentList)
         }
@@ -126,7 +146,7 @@ class TimerRepository(private val context: Context) {
                 put("title", block.title)
                 put("startTime", block.startTime.toString())
                 put("endTime", block.endTime.toString())
-                put("date", block.date.toString()) // Serialize date
+                put("date", block.date.toString())
                 put("type", block.type.name)
                 put("color", block.color ?: 0)
             }
@@ -137,7 +157,6 @@ class TimerRepository(private val context: Context) {
 
     private fun deserializeActiveTimers(jsonString: String): List<CustomBlock> {
         val list = mutableListOf<CustomBlock>()
-        // Throw exception if parsing fails to abort transaction in add/remove operations
         val jsonArray = JSONArray(jsonString)
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
