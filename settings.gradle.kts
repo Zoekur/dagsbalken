@@ -19,3 +19,5 @@ dependencyResolutionManagement {
 rootProject.name = "Dagsbalken"
 include(":app")
 include(":core")
+// Watch face module is kept in the repo but excluded from the build for now.
+// include(":wear-watchface")

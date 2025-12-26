@@ -29,8 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -89,7 +87,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.dagsbalken.app.timers.TimerAlarmScheduler
 import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.UiCustomBlock
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
@@ -104,6 +101,7 @@ import com.dagsbalken.core.data.BlockType
 import com.dagsbalken.core.data.CustomBlock
 import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.data.TimerModel
 import com.dagsbalken.core.data.TimerRepository
 import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.data.WeatherLocationSettings
@@ -151,6 +149,9 @@ class MainActivity : ComponentActivity() {
                             LinearClockScreen(
                                 viewModel = viewModel,
                                 themeOption = themeOption,
+                                onThemeOptionChange = {
+                                    viewModel.onThemeOptionChange(it)
+                                },
                                 onSettingsClick = {
                                     navController.navigate("settings")
                                 }
@@ -179,6 +180,7 @@ class MainActivity : ComponentActivity() {
 fun LinearClockScreen(
     viewModel: MainViewModel,
     themeOption: ThemeOption,
+    onThemeOptionChange: (ThemeOption) -> Unit,
     onSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -320,9 +322,8 @@ fun LinearClockScreen(
     }
 
     // Stable lambda for deletion
-    val onDeleteTimerLambda: (String) -> Unit = remember(scope, timerRepository, context) {
+    val onDeleteTimerLambda: (String) -> Unit = remember(scope, timerRepository) {
         { id: String ->
-            TimerAlarmScheduler.cancel(context, id)
             scope.launch { timerRepository.removeActiveTimer(id) }
             Unit
         }
@@ -353,21 +354,14 @@ fun LinearClockScreen(
                                     val startTime = LocalTime.now()
                                     val endTime = startTime.plusHours(timer.durationHours.toLong())
                                         .plusMinutes(timer.durationMinutes.toLong())
-
-                                    val startedAt = System.currentTimeMillis()
                                     val block = CustomBlock(
                                         title = timer.name,
                                         startTime = startTime,
                                         endTime = endTime,
                                         date = LocalDate.now(),
                                         type = BlockType.TIMER,
-                                        color = timer.colorHex,
-                                        metadata = mapOf("startedAtEpochMillis" to startedAt.toString())
+                                        color = timer.colorHex
                                     )
-
-                                    val durationMillis = (timer.durationHours * 3600L + timer.durationMinutes * 60L) * 1000L
-                                    TimerAlarmScheduler.schedule(context, block.id, startedAt + durationMillis)
-
                                     scope.launch {
                                         timerRepository.addActiveTimer(block)
                                         showTimerSheet = false
@@ -422,21 +416,14 @@ fun LinearClockScreen(
                 val endTime = startTime
                     .plusHours(timerModel.durationHours.toLong())
                     .plusMinutes(timerModel.durationMinutes.toLong())
-
-                val startedAt = System.currentTimeMillis()
                 val block = CustomBlock(
                     title = timerModel.name,
                     startTime = startTime,
                     endTime = endTime,
                     date = LocalDate.now(),
                     type = BlockType.TIMER,
-                    color = timerModel.colorHex,
-                    metadata = mapOf("startedAtEpochMillis" to startedAt.toString())
+                    color = timerModel.colorHex
                 )
-
-                val durationMillis = (timerModel.durationHours * 3600L + timerModel.durationMinutes * 60L) * 1000L
-                TimerAlarmScheduler.schedule(context, block.id, startedAt + durationMillis)
-
                 scope.launch {
                     timerRepository.saveTimerTemplate(timerModel)
                     timerRepository.addActiveTimer(block)
@@ -514,10 +501,7 @@ fun LinearClockScreen(
             // 4. Väder- och Klädrådsrutor
             if (showWeather || showClothing) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        // Make both cards take the height of the tallest card (dynamic, content-driven)
-                        .height(IntrinsicSize.Min),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (showWeather) {
@@ -535,24 +519,17 @@ fun LinearClockScreen(
                             }
                         }
                         WeatherInfoCard(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
+                            modifier = Modifier.weight(1f),
                             data = weatherData,
                             onRefresh = onRefreshWeather
                         )
                     } else if (showClothing) {
-                        // Filler to keep clothing card ratio if weather is hidden but clothing shown
-                        Spacer(Modifier.weight(1f))
+                         // Filler to keep clothing card ratio if weather is hidden but clothing shown
+                         Spacer(Modifier.weight(1f))
                     }
 
                     if (showClothing) {
-                        ClothingAdviceCard(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            data = weatherData
-                        )
+                        ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
                     } else if (showWeather) {
                         // Filler to keep weather card ratio if clothing is hidden
                         Spacer(Modifier.weight(1f))
@@ -824,23 +801,14 @@ fun TimerCountdownCard(
         endMinutes + 24 * 60 - startMinutes
     }.coerceAtLeast(1)
 
-    val startedAtEpochMillis = timer.block.metadata["startedAtEpochMillis"]?.toLongOrNull()
-
-    val remainingMinutes = if (startedAtEpochMillis != null) {
-        val durationMillis = totalMinutes * 60_000L
-        val remainingMillis = (startedAtEpochMillis + durationMillis) - System.currentTimeMillis()
-        (remainingMillis / 60_000L).toInt().coerceAtLeast(0)
-    } else {
-        val nowMinutesRaw = now.hour * 60 + now.minute
-        val elapsedSinceStart = when {
-            nowMinutesRaw >= startMinutes -> nowMinutesRaw - startMinutes
-            else -> nowMinutesRaw + 24 * 60 - startMinutes
-        }
-        val elapsedMinutes = elapsedSinceStart.coerceIn(0, totalMinutes)
-        (totalMinutes - elapsedMinutes).coerceAtLeast(0)
+    val nowMinutesRaw = now.hour * 60 + now.minute
+    val elapsedSinceStart = when {
+        nowMinutesRaw >= startMinutes -> nowMinutesRaw - startMinutes
+        else -> nowMinutesRaw + 24 * 60 - startMinutes
     }
-
-    val fractionElapsed = 1f - (remainingMinutes / totalMinutes.toFloat()).coerceIn(0f, 1f)
+    val elapsedMinutes = elapsedSinceStart.coerceIn(0, totalMinutes)
+    val remainingMinutes = (totalMinutes - elapsedMinutes).coerceAtLeast(0)
+    val fractionElapsed = elapsedMinutes / totalMinutes.toFloat()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -952,8 +920,7 @@ fun EmptyStateCard(text: String, onClick: () -> Unit) {
 @Composable
 fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh: () -> Unit = {}) {
     Card(
-        modifier = modifier
-            .heightIn(min = 160.dp),
+        modifier = modifier.height(200.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -1020,8 +987,7 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
 @Composable
 fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
     Card(
-        modifier = modifier
-            .heightIn(min = 160.dp),
+        modifier = modifier.height(200.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
