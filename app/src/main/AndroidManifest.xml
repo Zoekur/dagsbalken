@@ -111,6 +111,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".timers.TimerAlarmReceiver"
+            android:exported="false" />
+
     </application>
 
 
