@@ -149,6 +149,7 @@ class TimerRepository(private val context: Context) {
                 put("date", block.date.toString())
                 put("type", block.type.name)
                 put("color", block.color ?: 0)
+                put("metadata", JSONObject(block.metadata))
             }
             jsonArray.put(jsonObj)
         }
@@ -163,6 +164,17 @@ class TimerRepository(private val context: Context) {
             // Use current date if date field is missing (backward compatibility)
             val dateStr = obj.optString("date", LocalDate.now().toString())
 
+            val metadataObj = obj.optJSONObject("metadata")
+            val metadata = buildMap {
+                if (metadataObj != null) {
+                    val keys = metadataObj.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        put(key, metadataObj.optString(key, ""))
+                    }
+                }
+            }.filterValues { it.isNotBlank() }
+
             list.add(
                 CustomBlock(
                     id = obj.getString("id"),
@@ -171,7 +183,8 @@ class TimerRepository(private val context: Context) {
                     endTime = java.time.LocalTime.parse(obj.getString("endTime")),
                     date = java.time.LocalDate.parse(dateStr),
                     type = BlockType.valueOf(obj.getString("type")),
-                    color = obj.optInt("color", 0).takeIf { it != 0 }
+                    color = obj.optInt("color", 0).takeIf { it != 0 },
+                    metadata = metadata
                 )
             )
         }
