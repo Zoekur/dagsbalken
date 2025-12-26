@@ -44,7 +44,7 @@ class TimerRepository(private val context: Context) {
             try {
                 deserializeTimerTemplates(jsonString)
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading timer templates", e)
+                Log.e(TAG, "Error loading timer templates: $jsonString", e)
                 emptyList()
             }
         }
@@ -52,8 +52,12 @@ class TimerRepository(private val context: Context) {
     suspend fun saveTimerTemplate(timer: TimerModel) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            val backupString = preferences[TIMER_TEMPLATES_BACKUP_KEY]
-            val currentList = deserializeTimerTemplatesWithRecovery(jsonString, backupString).toMutableList()
+            val currentList = try {
+                deserializeTimerTemplates(jsonString).toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted templates found, resetting list. Original data: $jsonString", e)
+                mutableListOf()
+            }
 
             val index = currentList.indexOfFirst { it.id == timer.id }
             if (index != -1) {
@@ -72,9 +76,12 @@ class TimerRepository(private val context: Context) {
     suspend fun deleteTimerTemplate(timerId: String) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            val backupString = preferences[TIMER_TEMPLATES_BACKUP_KEY]
-            val currentList = deserializeTimerTemplatesWithRecovery(jsonString, backupString).toMutableList()
-            
+            val currentList = try {
+                deserializeTimerTemplates(jsonString).toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted templates found, resetting list. Original data: $jsonString", e)
+                mutableListOf()
+            }
             currentList.removeAll { it.id == timerId }
             
             val serialized = serializeTimerTemplates(currentList)
@@ -119,9 +126,17 @@ class TimerRepository(private val context: Context) {
         for (i in 0 until jsonArray.length()) {
             try {
                 val obj = jsonArray.getJSONObject(i)
-                list.add(deserializeTimerModel(obj))
+                list.add(
+                    TimerModel(
+                        id = obj.getString("id"),
+                        name = obj.getString("name"),
+                        durationHours = obj.getInt("durationHours"),
+                        durationMinutes = obj.getInt("durationMinutes"),
+                        colorHex = obj.getInt("colorHex")
+                    )
+                )
             } catch (e: Exception) {
-                Log.w(TAG, "Skipping corrupted timer template at index $i", e)
+                Log.e(TAG, "Skipping invalid timer template at index $i", e)
             }
         }
         return list
@@ -181,7 +196,7 @@ class TimerRepository(private val context: Context) {
             try {
                 deserializeActiveTimers(jsonString)
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading active timers", e)
+                Log.e(TAG, "Error loading active timers: $jsonString", e)
                 emptyList()
             }
         }
@@ -189,9 +204,12 @@ class TimerRepository(private val context: Context) {
     suspend fun addActiveTimer(block: CustomBlock) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            val backupString = preferences[ACTIVE_TIMERS_BACKUP_KEY]
-            val currentList = deserializeActiveTimersWithRecovery(jsonString, backupString).toMutableList()
-            
+            val currentList = try {
+                deserializeActiveTimers(jsonString).toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: $jsonString", e)
+                mutableListOf()
+            }
             currentList.add(block)
             
             val serialized = serializeActiveTimers(currentList)
@@ -204,9 +222,12 @@ class TimerRepository(private val context: Context) {
     suspend fun removeActiveTimer(blockId: String) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            val backupString = preferences[ACTIVE_TIMERS_BACKUP_KEY]
-            val currentList = deserializeActiveTimersWithRecovery(jsonString, backupString).toMutableList()
-            
+            val currentList = try {
+                deserializeActiveTimers(jsonString).toMutableList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: $jsonString", e)
+                mutableListOf()
+            }
             currentList.removeAll { it.id == blockId }
             
             val serialized = serializeActiveTimers(currentList)
@@ -227,7 +248,6 @@ class TimerRepository(private val context: Context) {
                 put("date", block.date.toString())
                 put("type", block.type.name)
                 put("color", block.color ?: 0)
-                put("metadata", JSONObject(block.metadata))
             }
             jsonArray.put(jsonObj)
         }
@@ -271,9 +291,22 @@ class TimerRepository(private val context: Context) {
         for (i in 0 until jsonArray.length()) {
             try {
                 val obj = jsonArray.getJSONObject(i)
-                list.add(deserializeCustomBlock(obj))
+                // Use current date if date field is missing (backward compatibility)
+                val dateStr = obj.optString("date", LocalDate.now().toString())
+
+                list.add(
+                    CustomBlock(
+                        id = obj.getString("id"),
+                        title = obj.getString("title"),
+                        startTime = java.time.LocalTime.parse(obj.getString("startTime")),
+                        endTime = java.time.LocalTime.parse(obj.getString("endTime")),
+                        date = java.time.LocalDate.parse(dateStr),
+                        type = BlockType.valueOf(obj.getString("type")),
+                        color = obj.optInt("color", 0).takeIf { it != 0 }
+                    )
+                )
             } catch (e: Exception) {
-                Log.w(TAG, "Skipping corrupted active timer at index $i", e)
+                Log.e(TAG, "Skipping invalid active timer at index $i", e)
             }
         }
         return list

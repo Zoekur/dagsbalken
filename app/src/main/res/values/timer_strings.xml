@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="timers_notification_channel_name">Timers</string>
-    <string name="timers_notification_channel_description">Notiser och ljud när en timer tar slut</string>
-    <string name="timer_done_title">Timer klar</string>
-    <string name="timer_done_body">Tiden är ute</string>
-</resources>
-
