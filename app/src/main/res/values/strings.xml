@@ -6,4 +6,6 @@
     <string name="widget_weather_description">Visar aktuell temperatur och väderlek.</string>
     <string name="widget_clothing_name">Dagsbalken: Klädsel</string>
     <string name="widget_clothing_description">Visar rekommenderad klädsel baserat på vädret.</string>
+
+    <!-- Watch face resources are in :wear-watchface -->
 </resources>
