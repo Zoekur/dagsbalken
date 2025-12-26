@@ -14,7 +14,8 @@ data class CustomBlock(
     val endTime: LocalTime,
     val date: LocalDate,
     val type: BlockType = BlockType.TIMER,
-    val color: Int? = null
+    val color: Int? = null,
+    val metadata: Map<String, String> = emptyMap()
 ) {
     companion object {
         /**
@@ -27,7 +28,8 @@ data class CustomBlock(
             startTime: LocalTime,
             endTime: LocalTime,
             type: BlockType = BlockType.TIMER,
-            color: Int? = null
+            color: Int? = null,
+            metadata: Map<String, String> = emptyMap()
         ): CustomBlock = CustomBlock(
             id = id,
             title = title,
@@ -35,7 +37,8 @@ data class CustomBlock(
             endTime = endTime,
             date = LocalDate.now(),
             type = type,
-            color = color
+            color = color,
+            metadata = metadata
         )
     }
 }

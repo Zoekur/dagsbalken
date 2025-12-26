@@ -64,10 +64,8 @@ kotlin {
 // Allt beroende (dependencies) ska ligga i ett enda block.
 dependencies {
     implementation(project(":core"))
-    // Kärnbibliotek
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
+
+    // Compose Navigation
     implementation(libs.androidx.navigation.compose)
 
     // Jetpack Compose
@@ -92,9 +90,6 @@ dependencies {
 
     // DataStore (för att spara data asynkront)
     implementation(libs.androidx.datastore.preferences)
-
-    // Wear OS (för Galaxy Watch face)
-    // (moved to :wear-watchface module)
 
     // Testbibliotek
     testImplementation(libs.junit)
