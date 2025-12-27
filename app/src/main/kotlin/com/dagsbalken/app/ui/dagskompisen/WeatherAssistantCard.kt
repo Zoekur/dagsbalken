@@ -1,6 +1,5 @@
 package com.dagsbalken.app.ui.dagskompisen
 
-import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,12 +18,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dagsbalken.app.R
 import com.dagsbalken.core.dagskompisen.WeatherContext
 import com.dagsbalken.core.dagskompisen.WeatherCondition
+import com.dagsbalken.core.dagskompisen.toOutfitName
+import com.dagsbalken.core.dagskompisen.toOverlayName
 import com.dagsbalken.core.dagskompisen.assistant.AssistantMessageProvider
 import com.dagsbalken.core.dagskompisen.assistant.RuleBasedMessageProvider
 
@@ -39,15 +40,15 @@ fun WeatherAssistantCard(
     modifier: Modifier = Modifier,
     messageProvider: AssistantMessageProvider = RuleBasedMessageProvider()
 ) {
-    // Use the extension functions as methods on the WeatherContext instance.
-    val outfitName = remember(context) { context.toOutfitName() }
-    val overlayName = remember(context) { context.toOverlayName() }
+    // Call extension functions directly to avoid type inference issues with remember
+    val outfitName = context.toOutfitName()
+    val overlayName = context.toOverlayName()
 
-    // Map names (from core) to drawable resource ids in app module at runtime.
-    val composeContext = LocalContext.current
-    val baseId = composeContext.resources.getIdentifier("character_base", "drawable", composeContext.packageName)
-    val outfitId = remember(outfitName) { nameToDrawableId(outfitName, composeContext) }
-    val overlayId = remember(overlayName) { nameToDrawableId(overlayName, composeContext) }
+    // Map names (from core) to drawable resource ids in app module at compile time.
+    // This uses explicit R.drawable references for compile-time safety and build optimizations.
+    val baseId = R.drawable.character_base
+    val outfitId = remember(outfitName) { nameToDrawableId(outfitName) }
+    val overlayId = remember(overlayName) { nameToDrawableId(overlayName) }
 
     Card(
         modifier = modifier
@@ -99,12 +100,26 @@ fun WeatherAssistantCard(
     }
 }
 
-// Resolve resource id by name at runtime. This avoids compile-time dependency on
-// the presence of specific drawable resources and keeps the app building even
-// when assets are temporarily missing.
-fun nameToDrawableId(name: String, ctx: Context): Int {
-    if (name.isBlank()) return 0
-    return ctx.resources.getIdentifier(name, "drawable", ctx.packageName)
+// Static mapping from core-provided names to compile-time drawable ids.
+// Map missing assets to reasonable fallbacks that exist in res/drawable.
+fun nameToDrawableId(name: String): Int = when (name) {
+    "outfit_rain" -> R.drawable.outfit_rain
+    "outfit_snow" -> R.drawable.outfit_snow
+    // outfit_windy not present in repository; fall back to rain outfit for now
+    "outfit_windy" -> R.drawable.outfit_rain
+    "outfit_hot" -> R.drawable.outfit_hot
+
+    "overlay_sun" -> R.drawable.overlay_sun
+    "overlay_cloudy" -> R.drawable.overlay_cloudy
+    "overlay_rain" -> R.drawable.overlay_rain
+    // overlay_storm not present; fall back to rain overlay
+    "overlay_storm" -> R.drawable.overlay_rain
+    "overlay_snow" -> R.drawable.overlay_snow
+    "overlay_windy" -> R.drawable.overlay_windy
+    "overlay_fog" -> R.drawable.overlay_fog
+    "overlay_hot" -> R.drawable.overlay_hot
+
+    else -> 0
 }
 
 @Preview(showBackground = true)
