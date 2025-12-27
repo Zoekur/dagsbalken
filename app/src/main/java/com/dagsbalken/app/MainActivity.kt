@@ -107,6 +107,9 @@ import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.data.WeatherLocationSettings
 import com.dagsbalken.core.data.WeatherRepository
 import com.dagsbalken.core.workers.WeatherWorker
+import com.dagsbalken.core.dagskompisen.WeatherContext
+import com.dagsbalken.core.dagskompisen.WeatherCondition
+import com.dagsbalken.app.ui.dagskompisen.WeatherAssistantCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -996,40 +999,46 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
 
 @Composable
 fun ClothingAdviceCard(modifier: Modifier = Modifier, data: WeatherData) {
-    Card(
-        modifier = modifier.height(200.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
+    // Keep the existing loading UI for parity with previous behavior.
+    if (!data.isDataLoaded) {
+        Card(
+            modifier = modifier.height(200.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            if (!data.isDataLoaded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     Spacer(Modifier.height(8.dp))
                     Text("Hämtar råd...", fontSize = 14.sp, color = Color.Gray)
                 }
-            } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Klädråd", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(Modifier.height(8.dp))
-                    Text(data.adviceIcon, fontSize = 48.sp)
-                    Text(
-                        data.adviceText,
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
             }
         }
+        return
     }
+
+    // Map the existing WeatherData to the platform-agnostic WeatherContext from core.
+    val weatherContext = remember(data) {
+        // Deterministic mapping based on available fields. This can be refined later.
+        val temp = data.temperatureCelsius
+        val condition = when {
+            data.precipitationChance >= 60 -> WeatherCondition.STORM
+            data.precipitationChance >= 30 -> WeatherCondition.RAIN
+            temp >= 25 -> WeatherCondition.HOT
+            temp <= 0 -> WeatherCondition.SNOW
+            else -> WeatherCondition.CLOUDY
+        }
+        WeatherContext(condition = condition, temperatureC = temp)
+    }
+
+    // Delegate to the new composable that layers images and shows assistant message.
+    WeatherAssistantCard(context = weatherContext, modifier = modifier.height(200.dp))
 }
 
 @Composable
