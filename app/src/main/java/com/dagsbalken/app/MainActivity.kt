@@ -596,6 +596,12 @@ fun LinearDayCard(
         val currentNowState = rememberUpdatedState(now)
         val currentItemsState = rememberUpdatedState(items)
 
+        // Bolt Optimization: Pre-calculate colors to avoid Color object construction in draw loop
+        val cachedColors = remember(items) {
+            items.map { it.color?.let { c -> Color(c) } ?: Color.Gray }
+        }
+        val currentColorsState = rememberUpdatedState(cachedColors)
+
         // Tidslinje med drawWithCache
         val drawModifier = remember(themeOption, tickColor, majorTickColor, nowColor) {
             Modifier.drawWithCache {
@@ -618,6 +624,7 @@ fun LinearDayCard(
                     // Read stable state inside draw phase to trigger redraw without rebuilding cache
                     val currentNow = currentNowState.value
                     val currentItems = currentItemsState.value
+                    val currentColors = currentColorsState.value
 
                     val currentMinutes = currentNow.hour * 60 + currentNow.minute
                     val currentX = currentMinutes * pxPerMin
@@ -646,10 +653,13 @@ fun LinearDayCard(
                         val eventStartPx = startMin * pxPerMin
                         val eventWidthPx = (actualEndMin - startMin) * pxPerMin
 
-                        val color = item.color?.let { Color(it) } ?: Color.Gray
+                        // Bolt Optimization: Use pre-calculated color and drawRect alpha param
+                        // to avoid Color.copy() allocation in draw loop
+                        val color = if (i < currentColors.size) currentColors[i] else Color.Gray
 
                         drawRect(
-                            color = color.copy(alpha = 0.3f),
+                            color = color,
+                            alpha = 0.3f,
                             topLeft = Offset(eventStartPx, 0f),
                             size = Size(eventWidthPx, heightPx)
                         )

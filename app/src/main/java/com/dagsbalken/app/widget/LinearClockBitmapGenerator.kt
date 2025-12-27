@@ -85,7 +85,9 @@ object LinearClockBitmapGenerator {
 
         // 3. Draw Events
         // Events are filtered in Widget before calling this if showEvents is false.
-        events.forEach { event ->
+        // Bolt Optimization: Use indexed loop to avoid Iterator allocation
+        for (i in events.indices) {
+            val event = events[i]
             val startMin = event.start.hour * 60 + event.start.minute
             val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
             val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
