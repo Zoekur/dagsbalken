@@ -1,7 +1,7 @@
 package com.dagsbalken.app.ui.theme
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -34,7 +35,11 @@ fun ThemeSelector(selectedOption: ThemeOption, onOptionSelected: (ThemeOption) -
                 text = option.displayName,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onOptionSelected(option) }
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onOptionSelected(option) },
+                        role = Role.RadioButton
+                    )
                     .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
