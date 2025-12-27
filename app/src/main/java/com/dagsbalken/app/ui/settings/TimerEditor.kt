@@ -306,10 +306,26 @@ fun TimerDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Track interaction to show validation errors only after user input
+                var nameTouched by remember { mutableStateOf(false) }
+                val isNameError = name.isBlank() && nameTouched
+
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = {
+                        name = it
+                        nameTouched = true
+                    },
                     label = { Text("Name") },
+                    placeholder = { Text("e.g. Focus Timer") },
+                    isError = isNameError,
+                    supportingText = {
+                        if (isNameError) {
+                            Text("Name is required", color = MaterialTheme.colorScheme.error)
+                        } else if (!nameTouched && name.isBlank()) {
+                            Text("* Required")
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
@@ -323,6 +339,7 @@ fun TimerDialog(
                         value = hours,
                         onValueChange = { if (it.all { char -> char.isDigit() }) hours = it },
                         label = { Text("Hours") },
+                        suffix = { Text("h") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
@@ -333,6 +350,7 @@ fun TimerDialog(
                         value = minutes,
                         onValueChange = { if (it.all { char -> char.isDigit() }) minutes = it },
                         label = { Text("Minutes") },
+                        suffix = { Text("m") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
