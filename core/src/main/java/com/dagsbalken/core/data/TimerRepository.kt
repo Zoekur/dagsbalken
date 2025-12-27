@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
+import java.time.LocalTime
 
 private val Context.timerDataStore by preferencesDataStore(name = "timer_preferences")
 
@@ -146,6 +147,7 @@ class TimerRepository(private val context: Context) {
      * Attempts to deserialize timer templates with item-level recovery.
      * On complete failure, attempts to restore from backup.
      */
+    @Suppress("unused")
     private fun deserializeTimerTemplatesWithRecovery(jsonString: String, backupString: String?): List<TimerModel> {
         return try {
             // First, try to parse the entire JSON array
@@ -262,26 +264,14 @@ class TimerRepository(private val context: Context) {
         // Use current date if date field is missing (backward compatibility)
         val dateStr = obj.optString("date", LocalDate.now().toString())
 
-        val metadataObj = obj.optJSONObject("metadata")
-        val metadata = buildMap {
-            if (metadataObj != null) {
-                val keys = metadataObj.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    put(key, metadataObj.optString(key, ""))
-                }
-            }
-        }.filterValues { it.isNotBlank() }
-
         return CustomBlock(
             id = obj.getString("id"),
             title = obj.getString("title"),
-            startTime = java.time.LocalTime.parse(obj.getString("startTime")),
-            endTime = java.time.LocalTime.parse(obj.getString("endTime")),
-            date = java.time.LocalDate.parse(dateStr),
+            startTime = LocalTime.parse(obj.getString("startTime")),
+            endTime = LocalTime.parse(obj.getString("endTime")),
+            date = LocalDate.parse(dateStr),
             type = BlockType.valueOf(obj.getString("type")),
-            color = obj.optInt("color", 0).takeIf { it != 0 },
-            metadata = metadata
+            color = obj.optInt("color", 0).takeIf { it != 0 }
         )
     }
 
@@ -298,9 +288,9 @@ class TimerRepository(private val context: Context) {
                     CustomBlock(
                         id = obj.getString("id"),
                         title = obj.getString("title"),
-                        startTime = java.time.LocalTime.parse(obj.getString("startTime")),
-                        endTime = java.time.LocalTime.parse(obj.getString("endTime")),
-                        date = java.time.LocalDate.parse(dateStr),
+                        startTime = LocalTime.parse(obj.getString("startTime")),
+                        endTime = LocalTime.parse(obj.getString("endTime")),
+                        date = LocalDate.parse(dateStr),
                         type = BlockType.valueOf(obj.getString("type")),
                         color = obj.optInt("color", 0).takeIf { it != 0 }
                     )
@@ -316,13 +306,14 @@ class TimerRepository(private val context: Context) {
      * Attempts to deserialize active timers with item-level recovery.
      * On complete failure, attempts to restore from backup.
      */
+    @Suppress("unused")
     private fun deserializeActiveTimersWithRecovery(jsonString: String, backupString: String?): List<CustomBlock> {
         return try {
             // First, try to parse the entire JSON array
             val jsonArray = JSONArray(jsonString)
             val list = mutableListOf<CustomBlock>()
             var hasCorruption = false
-            
+
             // Attempt item-level recovery
             for (i in 0 until jsonArray.length()) {
                 try {
@@ -333,16 +324,16 @@ class TimerRepository(private val context: Context) {
                     Log.w(TAG, "Skipping corrupted active timer at index $i", e)
                 }
             }
-            
+
             if (hasCorruption && list.isEmpty() && backupString != null) {
                 Log.w(TAG, "All items corrupted, attempting restore from backup")
                 return deserializeActiveTimers(backupString)
             }
-            
+
             if (hasCorruption) {
                 Log.w(TAG, "Recovered ${list.size} active timers, some items were corrupted")
             }
-            
+
             list
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse active timers JSON. Data: ${truncateForLog(jsonString)}", e)
