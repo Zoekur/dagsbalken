@@ -41,4 +41,7 @@ dependencies {
 
     // HTTP client for network calls
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
+
+    // Unit testing
+    testImplementation("junit:junit:4.13.2")
 }
