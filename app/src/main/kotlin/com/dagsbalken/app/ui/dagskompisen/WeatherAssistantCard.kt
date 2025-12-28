@@ -1,10 +1,7 @@
 package com.dagsbalken.app.ui.dagskompisen
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -12,7 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -26,26 +22,21 @@ import com.dagsbalken.core.dagskompisen.WeatherContext
 import com.dagsbalken.core.dagskompisen.WeatherCondition
 import com.dagsbalken.core.dagskompisen.toOutfitName
 import com.dagsbalken.core.dagskompisen.toOverlayName
-import com.dagsbalken.core.dagskompisen.assistant.AssistantMessageProvider
-import com.dagsbalken.core.dagskompisen.assistant.RuleBasedMessageProvider
 
 /**
- * Small, reusable assistant card that layers images: Base -> Outfit -> Overlay
- * and shows a short message from the assistant. No animation included but the
- * structure supports adding animations later.
+ * Compact, pictogram-only assistant card.
+ * Layers images Base -> Outfit -> Overlay without any text bubble.
  */
 @Composable
 fun WeatherAssistantCard(
     context: WeatherContext,
-    modifier: Modifier = Modifier,
-    messageProvider: AssistantMessageProvider = RuleBasedMessageProvider()
+    modifier: Modifier = Modifier
 ) {
     // Call extension functions directly to avoid type inference issues with remember
     val outfitName = context.toOutfitName()
     val overlayName = context.toOverlayName()
 
     // Map names (from core) to drawable resource ids in app module at compile time.
-    // This uses explicit R.drawable references for compile-time safety and build optimizations.
     val baseId = R.drawable.character_base
     val outfitId = remember(outfitName) { nameToDrawableId(outfitName) }
     val overlayId = remember(overlayName) { nameToDrawableId(overlayName) }
@@ -53,48 +44,41 @@ fun WeatherAssistantCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .height(120.dp)
             .padding(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .padding(12.dp)
-                .height(96.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .fillMaxWidth()
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(modifier = Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                if (baseId != 0) {
-                    Image(
-                        painter = painterResource(id = baseId),
-                        contentDescription = "Dagskompisen base",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
-
-                if (outfitId != 0) {
-                    Image(
-                        painter = painterResource(id = outfitId),
-                        contentDescription = "Outfit",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
-
-                if (overlayId != 0) {
-                    Image(
-                        painter = painterResource(id = overlayId),
-                        contentDescription = "Weather overlay",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
+            if (baseId != 0) {
+                Image(
+                    painter = painterResource(id = baseId),
+                    contentDescription = "Dagskompisen basfigur",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(96.dp)
+                )
             }
 
-            Column(modifier = Modifier.weight(1f)) {
-                val msg = remember(context) { messageProvider.message(context) }
-                Text(text = msg, style = MaterialTheme.typography.bodyMedium)
+            if (outfitId != 0) {
+                Image(
+                    painter = painterResource(id = outfitId),
+                    contentDescription = "Dagskompisen klädsel",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(96.dp)
+                )
+            }
+
+            if (overlayId != 0) {
+                Image(
+                    painter = painterResource(id = overlayId),
+                    contentDescription = "Dagskompisen vädersymbol",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(96.dp)
+                )
             }
         }
     }
