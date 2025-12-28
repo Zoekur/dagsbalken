@@ -9,6 +9,7 @@ import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
+import java.util.concurrent.ConcurrentHashMap
 
 object LinearClockBitmapGenerator {
 
@@ -19,7 +20,9 @@ object LinearClockBitmapGenerator {
     }
 
     // Cache for Typeface objects to avoid repeated JNI lookups/creation
-    private val typefaceCache = java.util.concurrent.ConcurrentHashMap<String, Typeface>()
+    // Bolt Optimization: Use nested map to avoid string allocation for composite keys ("font-style")
+    // Map: FontFamily -> (Style -> Typeface)
+    private val typefaceCache = ConcurrentHashMap<String, ConcurrentHashMap<Int, Typeface>>()
 
     fun generate(
         context: Context,
@@ -114,12 +117,16 @@ object LinearClockBitmapGenerator {
         paint.color = colorBorder
         paint.strokeWidth = 2f * if(densityMultiplier > 1.5) 1.5f else 1f
         paint.textSize = 24f * config.scale * densityMultiplier
-        // Bolt Optimization: Cached Typeface lookup
+
+        // Bolt Optimization: Cached Typeface lookup using nested maps to avoid string allocation
         val style = Typeface.BOLD
-        val cacheKey = "${config.font}-$style"
-        paint.typeface = typefaceCache.computeIfAbsent(cacheKey) {
-            Typeface.create(config.font, style)
+        val fontStyles = typefaceCache.computeIfAbsent(config.font) {
+            ConcurrentHashMap<Int, Typeface>()
         }
+        paint.typeface = fontStyles.computeIfAbsent(style) { s ->
+            Typeface.create(config.font, s)
+        }
+
         paint.textAlign = Paint.Align.CENTER
 
         // Find first visible hour
