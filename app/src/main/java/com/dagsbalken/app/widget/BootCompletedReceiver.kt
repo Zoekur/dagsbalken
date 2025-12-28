@@ -22,7 +22,9 @@ class BootCompletedReceiver : BroadcastReceiver() {
                     val manager = GlanceAppWidgetManager(context)
                     val widgetIds = manager.getGlanceIds(LinearClockWidget::class.java)
                     if (widgetIds.isNotEmpty()) {
-                        LinearClockWidgetReceiver.scheduleUpdates(context)
+                        LinearClockTickReceiver.scheduleUpdates(context)
+                        // Cleanup legacy alarms on boot
+                        LinearClockWidgetReceiver.cancelLegacyUpdates(context)
                     }
                 } finally {
                     pendingResult.finish()
