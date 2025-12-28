@@ -45,7 +45,7 @@ class TimerRepository(private val context: Context) {
             try {
                 deserializeTimerTemplates(jsonString)
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading timer templates: $jsonString", e)
+                Log.e(TAG, "Error loading timer templates: ${truncateForLog(jsonString)}", e)
                 emptyList()
             }
         }
@@ -56,7 +56,7 @@ class TimerRepository(private val context: Context) {
             val currentList = try {
                 deserializeTimerTemplates(jsonString).toMutableList()
             } catch (e: Exception) {
-                Log.e(TAG, "Corrupted templates found, resetting list. Original data: $jsonString", e)
+                Log.e(TAG, "Corrupted templates found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
                 mutableListOf()
             }
 
@@ -80,7 +80,7 @@ class TimerRepository(private val context: Context) {
             val currentList = try {
                 deserializeTimerTemplates(jsonString).toMutableList()
             } catch (e: Exception) {
-                Log.e(TAG, "Corrupted templates found, resetting list. Original data: $jsonString", e)
+                Log.e(TAG, "Corrupted templates found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
                 mutableListOf()
             }
             currentList.removeAll { it.id == timerId }
@@ -198,7 +198,7 @@ class TimerRepository(private val context: Context) {
             try {
                 deserializeActiveTimers(jsonString)
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading active timers: $jsonString", e)
+                Log.e(TAG, "Error loading active timers: ${truncateForLog(jsonString)}", e)
                 emptyList()
             }
         }
@@ -209,7 +209,7 @@ class TimerRepository(private val context: Context) {
             val currentList = try {
                 deserializeActiveTimers(jsonString).toMutableList()
             } catch (e: Exception) {
-                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: $jsonString", e)
+                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
                 mutableListOf()
             }
             currentList.add(block)
@@ -227,7 +227,7 @@ class TimerRepository(private val context: Context) {
             val currentList = try {
                 deserializeActiveTimers(jsonString).toMutableList()
             } catch (e: Exception) {
-                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: $jsonString", e)
+                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
                 mutableListOf()
             }
             currentList.removeAll { it.id == blockId }
