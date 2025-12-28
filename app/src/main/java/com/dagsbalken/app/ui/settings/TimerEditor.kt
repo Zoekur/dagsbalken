@@ -228,10 +228,10 @@ fun TimerItem(
                 )
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                Icon(Icons.Default.Edit, contentDescription = "Edit ${timer.name}")
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                Icon(Icons.Default.Delete, contentDescription = "Delete ${timer.name}")
             }
         }
     }
