@@ -1,16 +1,22 @@
 package com.dagsbalken.app.ui.theme
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -20,6 +26,8 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ThemeSelector(selectedOption: ThemeOption, onOptionSelected: (ThemeOption) -> Unit) {
+    val isDarkTheme = isSystemInDarkTheme()
+
     // Changed to FlowRow to handle multiple options better on smaller screens
     FlowRow(
         modifier = Modifier
@@ -29,10 +37,12 @@ fun ThemeSelector(selectedOption: ThemeOption, onOptionSelected: (ThemeOption) -
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        ThemeOption.values().forEach { option ->
+        // Use entries to avoid array allocation on every recomposition
+        ThemeOption.entries.forEach { option ->
             val isSelected = selectedOption == option
-            Text(
-                text = option.displayName,
+            val primaryColor = if (isDarkTheme) option.darkColors.primary else option.lightColors.primary
+
+            Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .selectable(
@@ -42,9 +52,23 @@ fun ThemeSelector(selectedOption: ThemeOption, onOptionSelected: (ThemeOption) -
                     )
                     .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyMedium
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Visual preview of the theme's primary color
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(primaryColor)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), CircleShape)
+                )
+                Text(
+                    text = option.displayName,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
