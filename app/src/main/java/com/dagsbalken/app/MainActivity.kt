@@ -465,11 +465,12 @@ fun LinearClockScreen(
 
             // 1. Tidslinjen
             if (showClock) {
-                val unwrappedItems = remember(allItems) { allItems.map { it.block } }
+                // Bolt Optimization: Pass wrapped items directly to avoid unwrapped list allocation
+                // and leverage pre-calculated values in UiCustomBlock.
                 LinearDayCard(
                     now = now.toLocalTime(),
                     height = 168.dp,
-                    items = unwrappedItems,
+                    items = allItems,
                     themeOption = themeOption
                 )
                 Spacer(Modifier.height(16.dp))
@@ -575,7 +576,7 @@ fun LinearClockScreen(
 fun LinearDayCard(
     now: LocalTime,
     height: Dp = 160.dp,
-    items: List<CustomBlock> = emptyList(),
+    items: List<UiCustomBlock> = emptyList(),
     themeOption: ThemeOption
 ) {
     val cornerRadiusDp = 28.dp
@@ -601,7 +602,7 @@ fun LinearDayCard(
 
         // Bolt Optimization: Pre-calculate colors to avoid Color object construction in draw loop
         val cachedColors = remember(items) {
-            items.map { it.color?.let { c -> Color(c) } ?: Color.Gray }
+            items.map { it.block.color?.let { c -> Color(c) } ?: Color.Gray }
         }
         val currentColorsState = rememberUpdatedState(cachedColors)
 
@@ -642,12 +643,13 @@ fun LinearDayCard(
                     // 2. Rita events/timers
                     for (i in currentItems.indices) {
                         val item = currentItems[i]
-                        val startMin = item.startTime.hour * 60 + item.startTime.minute
-                        val endMin = item.endTime.hour * 60 + item.endTime.minute
+                        // Bolt Optimization: Use pre-calculated minutes from UiCustomBlock
+                        val startMin = item.startMinute
+                        val endMin = item.endMinute
 
                         val actualEndMin = if (endMin > startMin) {
                             endMin
-                        } else if (item.startTime == LocalTime.MIDNIGHT) {
+                        } else if (item.block.startTime == LocalTime.MIDNIGHT) {
                             endMin
                         } else {
                             24 * 60

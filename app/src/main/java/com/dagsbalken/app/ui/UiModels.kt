@@ -7,9 +7,15 @@ import com.dagsbalken.core.data.CustomBlock
 /**
  * Immutable wrapper for CustomBlock to make it stable in Compose.
  * This allows LazyColumn/Lists to skip recomposition of items that haven't changed.
+ *
+ * Bolt Optimization: Pre-calculate minute values to avoid arithmetic in draw loops.
  */
 @Immutable
-data class UiCustomBlock(val block: CustomBlock)
+data class UiCustomBlock(
+    val block: CustomBlock,
+    val startMinute: Int = block.startTime.hour * 60 + block.startTime.minute,
+    val endMinute: Int = block.endTime.hour * 60 + block.endTime.minute
+)
 
 // Shared Color Options to prevent allocation on every recomposition
 val TIMER_COLOR_OPTIONS = listOf(
