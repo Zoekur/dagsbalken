@@ -24,6 +24,11 @@ object LinearClockBitmapGenerator {
     // Map: FontFamily -> (Style -> Typeface)
     private val typefaceCache = ConcurrentHashMap<String, ConcurrentHashMap<Int, Typeface>>()
 
+    // ThreadLocal to reuse Bitmap buffer and avoid 1MB+ allocation per minute/update.
+    // Thrashing may occur if multiple widgets with different sizes update on the same thread,
+    // but this still optimizes the common case (single widget or same sizes).
+    private val bitmapCache = ThreadLocal<Bitmap>()
+
     fun generate(
         context: Context,
         width: Int,
@@ -32,7 +37,17 @@ object LinearClockBitmapGenerator {
         config: WidgetConfig,
         currentTime: LocalTime = LocalTime.now()
     ): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        // Reuse Bitmap from ThreadLocal to avoid massive allocation
+        val cachedBitmap = bitmapCache.get()
+        val bitmap = if (cachedBitmap != null && cachedBitmap.width == width && cachedBitmap.height == height) {
+            cachedBitmap.eraseColor(0) // Clear previous content
+            cachedBitmap
+        } else {
+            val newBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            bitmapCache.set(newBitmap)
+            newBitmap
+        }
+
         val canvas = Canvas(bitmap)
 
         // Colors from config
