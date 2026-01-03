@@ -274,19 +274,29 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = manualLocationText,
                         onValueChange = { newName: String ->
-                            manualLocationText = newName
-                            searchJob?.cancel()
-                            searchJob = scope.launch {
-                                if (newName.length >= 2) {
-                                    delay(500)
-                                    suggestions = weatherRepository.searchLocations(newName)
-                                    showSuggestions = suggestions.isNotEmpty()
-                                } else {
-                                    showSuggestions = false
+                            val truncatedName = newName.take(50)
+                            if (truncatedName != manualLocationText) {
+                                manualLocationText = truncatedName
+                                searchJob?.cancel()
+                                searchJob = scope.launch {
+                                    if (truncatedName.length >= 2) {
+                                        delay(500)
+                                        suggestions = weatherRepository.searchLocations(truncatedName)
+                                        showSuggestions = suggestions.isNotEmpty()
+                                    } else {
+                                        showSuggestions = false
+                                    }
                                 }
                             }
                         },
                         label = { Text("Ange ort") },
+                        supportingText = {
+                            Text(
+                                text = "${manualLocationText.length}/50",
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )

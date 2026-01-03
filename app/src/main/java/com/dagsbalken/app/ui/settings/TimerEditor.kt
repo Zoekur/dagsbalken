@@ -292,17 +292,25 @@ fun TimerDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
-                        name = it
-                        nameTouched = true
+                        val truncatedName = it.take(50)
+                        if (truncatedName != name) {
+                            name = truncatedName
+                            nameTouched = true
+                        }
                     },
                     label = { Text("Name") },
                     placeholder = { Text("e.g. Focus Timer") },
                     isError = isNameError,
                     supportingText = {
-                        if (isNameError) {
-                            Text("Name is required", color = MaterialTheme.colorScheme.error)
-                        } else if (!nameTouched && name.isBlank()) {
-                            Text("* Required")
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            if (isNameError) {
+                                Text("Name is required", color = MaterialTheme.colorScheme.error)
+                            } else if (!nameTouched && name.isBlank()) {
+                                Text("* Required")
+                            } else {
+                                Spacer(modifier = Modifier.width(1.dp)) // Maintain height
+                            }
+                            Text("${name.length}/50")
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
