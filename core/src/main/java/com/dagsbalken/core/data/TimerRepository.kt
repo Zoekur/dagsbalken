@@ -53,12 +53,9 @@ class TimerRepository(private val context: Context) {
     suspend fun saveTimerTemplate(timer: TimerModel) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            val currentList = try {
-                deserializeTimerTemplates(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted templates found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            val backupString = preferences[TIMER_TEMPLATES_BACKUP_KEY]
+            val (list, usedBackup) = deserializeTimerTemplatesWithRecovery(jsonString, backupString)
+            val currentList = list.toMutableList()
 
             val index = currentList.indexOfFirst { it.id == timer.id }
             if (index != -1) {
@@ -68,8 +65,10 @@ class TimerRepository(private val context: Context) {
             }
             
             val serialized = serializeTimerTemplates(currentList)
-            // Update backup with the last known good state before writing new data
-            preferences[TIMER_TEMPLATES_BACKUP_KEY] = jsonString
+            // Update backup only if we didn't use it (meaning current state was valid)
+            if (!usedBackup) {
+                preferences[TIMER_TEMPLATES_BACKUP_KEY] = jsonString
+            }
             preferences[TIMER_TEMPLATES_KEY] = serialized
         }
     }
@@ -77,17 +76,17 @@ class TimerRepository(private val context: Context) {
     suspend fun deleteTimerTemplate(timerId: String) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            val currentList = try {
-                deserializeTimerTemplates(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted templates found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            val backupString = preferences[TIMER_TEMPLATES_BACKUP_KEY]
+            val (list, usedBackup) = deserializeTimerTemplatesWithRecovery(jsonString, backupString)
+            val currentList = list.toMutableList()
+
             currentList.removeAll { it.id == timerId }
             
             val serialized = serializeTimerTemplates(currentList)
-            // Update backup with the last known good state before writing new data
-            preferences[TIMER_TEMPLATES_BACKUP_KEY] = jsonString
+            // Update backup only if we didn't use it (meaning current state was valid)
+            if (!usedBackup) {
+                preferences[TIMER_TEMPLATES_BACKUP_KEY] = jsonString
+            }
             preferences[TIMER_TEMPLATES_KEY] = serialized
         }
     }
@@ -147,8 +146,7 @@ class TimerRepository(private val context: Context) {
      * Attempts to deserialize timer templates with item-level recovery.
      * On complete failure, attempts to restore from backup.
      */
-    @Suppress("unused")
-    private fun deserializeTimerTemplatesWithRecovery(jsonString: String, backupString: String?): List<TimerModel> {
+    private fun deserializeTimerTemplatesWithRecovery(jsonString: String, backupString: String?): Pair<List<TimerModel>, Boolean> {
         return try {
             // First, try to parse the entire JSON array
             val jsonArray = JSONArray(jsonString)
@@ -168,25 +166,26 @@ class TimerRepository(private val context: Context) {
             
             if (hasCorruption && list.isEmpty() && backupString != null) {
                 Log.w(TAG, "All items corrupted, attempting restore from backup")
-                return deserializeTimerTemplates(backupString)
+                return Pair(deserializeTimerTemplates(backupString), true)
             }
             
             if (hasCorruption) {
                 Log.w(TAG, "Recovered ${list.size} timer templates, some items were corrupted")
             }
             
-            list
+            Pair(list, false)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse timer templates JSON. Data: ${truncateForLog(jsonString)}", e)
             if (backupString != null) {
                 Log.w(TAG, "Attempting restore from backup")
                 try {
-                    return deserializeTimerTemplates(backupString)
+                    return Pair(deserializeTimerTemplates(backupString), true)
                 } catch (backupError: Exception) {
                     Log.e(TAG, "Backup also corrupted", backupError)
+                    throw backupError
                 }
             }
-            emptyList()
+            throw e
         }
     }
 
@@ -206,17 +205,17 @@ class TimerRepository(private val context: Context) {
     suspend fun addActiveTimer(block: CustomBlock) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            val currentList = try {
-                deserializeActiveTimers(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            val backupString = preferences[ACTIVE_TIMERS_BACKUP_KEY]
+            val (list, usedBackup) = deserializeActiveTimersWithRecovery(jsonString, backupString)
+            val currentList = list.toMutableList()
+
             currentList.add(block)
             
             val serialized = serializeActiveTimers(currentList)
-            // Update backup with the last known good state before writing new data
-            preferences[ACTIVE_TIMERS_BACKUP_KEY] = jsonString
+            // Update backup only if we didn't use it
+            if (!usedBackup) {
+                preferences[ACTIVE_TIMERS_BACKUP_KEY] = jsonString
+            }
             preferences[ACTIVE_TIMERS_KEY] = serialized
         }
     }
@@ -224,17 +223,17 @@ class TimerRepository(private val context: Context) {
     suspend fun removeActiveTimer(blockId: String) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            val currentList = try {
-                deserializeActiveTimers(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            val backupString = preferences[ACTIVE_TIMERS_BACKUP_KEY]
+            val (list, usedBackup) = deserializeActiveTimersWithRecovery(jsonString, backupString)
+            val currentList = list.toMutableList()
+
             currentList.removeAll { it.id == blockId }
             
             val serialized = serializeActiveTimers(currentList)
-            // Update backup with the last known good state before writing new data
-            preferences[ACTIVE_TIMERS_BACKUP_KEY] = jsonString
+            // Update backup only if we didn't use it
+            if (!usedBackup) {
+                preferences[ACTIVE_TIMERS_BACKUP_KEY] = jsonString
+            }
             preferences[ACTIVE_TIMERS_KEY] = serialized
         }
     }
@@ -306,8 +305,7 @@ class TimerRepository(private val context: Context) {
      * Attempts to deserialize active timers with item-level recovery.
      * On complete failure, attempts to restore from backup.
      */
-    @Suppress("unused")
-    private fun deserializeActiveTimersWithRecovery(jsonString: String, backupString: String?): List<CustomBlock> {
+    private fun deserializeActiveTimersWithRecovery(jsonString: String, backupString: String?): Pair<List<CustomBlock>, Boolean> {
         return try {
             // First, try to parse the entire JSON array
             val jsonArray = JSONArray(jsonString)
@@ -327,25 +325,26 @@ class TimerRepository(private val context: Context) {
 
             if (hasCorruption && list.isEmpty() && backupString != null) {
                 Log.w(TAG, "All items corrupted, attempting restore from backup")
-                return deserializeActiveTimers(backupString)
+                return Pair(deserializeActiveTimers(backupString), true)
             }
 
             if (hasCorruption) {
                 Log.w(TAG, "Recovered ${list.size} active timers, some items were corrupted")
             }
 
-            list
+            Pair(list, false)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse active timers JSON. Data: ${truncateForLog(jsonString)}", e)
             if (backupString != null) {
                 Log.w(TAG, "Attempting restore from backup")
                 try {
-                    return deserializeActiveTimers(backupString)
+                    return Pair(deserializeActiveTimers(backupString), true)
                 } catch (backupError: Exception) {
                     Log.e(TAG, "Backup also corrupted", backupError)
+                    throw backupError
                 }
             }
-            emptyList()
+            throw e
         }
     }
 }
