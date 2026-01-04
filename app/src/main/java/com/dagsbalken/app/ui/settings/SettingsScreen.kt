@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -288,7 +290,21 @@ fun SettingsScreen(
                         },
                         label = { Text("Ange ort") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        trailingIcon = {
+                            if (manualLocationText.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    manualLocationText = ""
+                                    showSuggestions = false
+                                    searchJob?.cancel()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear location search"
+                                    )
+                                }
+                            }
+                        }
                     )
 
                     if (showSuggestions) {
