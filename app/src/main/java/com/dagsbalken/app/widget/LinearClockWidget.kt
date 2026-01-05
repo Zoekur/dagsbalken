@@ -39,6 +39,7 @@ import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
+import java.time.LocalDate
 import java.time.LocalTime
 
 import com.dagsbalken.app.widget.LinearClockBitmapGenerator
@@ -46,6 +47,37 @@ import com.dagsbalken.app.widget.LinearClockBitmapGenerator
 object LinearClockWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
+
+    private data class EventCache(
+        val date: LocalDate,
+        val timestamp: Long,
+        val events: List<DayEvent>
+    )
+
+    @Volatile
+    private var eventCache: EventCache? = null
+
+    private suspend fun getCachedEvents(context: Context): List<DayEvent> {
+        val now = System.currentTimeMillis()
+        val today = LocalDate.now()
+        val cache = eventCache
+
+        // Cache is valid if:
+        // 1. It exists
+        // 2. It is for the current day
+        // 3. It is less than 5 minutes old (300,000 ms)
+        if (cache != null && cache.date == today && (now - cache.timestamp) < 300_000L) {
+            return cache.events
+        }
+
+        // Fetch new data
+        val calendarRepo = CalendarRepository(context)
+        val events = calendarRepo.getEventsForToday()
+
+        // Update cache
+        eventCache = EventCache(today, now, events)
+        return events
+    }
 
     suspend fun updateAll(context: Context) {
         GlanceAppWidgetManager(context)
@@ -57,10 +89,9 @@ object LinearClockWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val weatherRepo = WeatherRepository(context)
-        val calendarRepo = CalendarRepository(context)
 
-        // Hämta event (detta sker vid uppdatering)
-        val events = calendarRepo.getEventsForToday()
+        // Fetch events with caching to avoid expensive ContentProvider queries on every minute tick
+        val events = getCachedEvents(context)
 
         provideContent {
             val weatherData by weatherRepo.weatherDataFlow.collectAsState(initial = null)
