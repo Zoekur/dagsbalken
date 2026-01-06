@@ -53,12 +53,8 @@ class TimerRepository(private val context: Context) {
     suspend fun saveTimerTemplate(timer: TimerModel) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            val currentList = try {
-                deserializeTimerTemplates(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted templates found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            // Allow exception to propagate to abort transaction if data is corrupted
+            val currentList = deserializeTimerTemplates(jsonString).toMutableList()
 
             val index = currentList.indexOfFirst { it.id == timer.id }
             if (index != -1) {
@@ -77,12 +73,8 @@ class TimerRepository(private val context: Context) {
     suspend fun deleteTimerTemplate(timerId: String) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
-            val currentList = try {
-                deserializeTimerTemplates(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted templates found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            // Allow exception to propagate to abort transaction if data is corrupted
+            val currentList = deserializeTimerTemplates(jsonString).toMutableList()
             currentList.removeAll { it.id == timerId }
             
             val serialized = serializeTimerTemplates(currentList)
@@ -206,12 +198,8 @@ class TimerRepository(private val context: Context) {
     suspend fun addActiveTimer(block: CustomBlock) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            val currentList = try {
-                deserializeActiveTimers(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            // Allow exception to propagate to abort transaction if data is corrupted
+            val currentList = deserializeActiveTimers(jsonString).toMutableList()
             currentList.add(block)
             
             val serialized = serializeActiveTimers(currentList)
@@ -224,12 +212,8 @@ class TimerRepository(private val context: Context) {
     suspend fun removeActiveTimer(blockId: String) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
-            val currentList = try {
-                deserializeActiveTimers(jsonString).toMutableList()
-            } catch (e: Exception) {
-                Log.e(TAG, "Corrupted active timers found, resetting list. Original data: ${truncateForLog(jsonString)}", e)
-                mutableListOf()
-            }
+            // Allow exception to propagate to abort transaction if data is corrupted
+            val currentList = deserializeActiveTimers(jsonString).toMutableList()
             currentList.removeAll { it.id == blockId }
             
             val serialized = serializeActiveTimers(currentList)
