@@ -968,12 +968,6 @@ fun WeatherInfoCard(modifier: Modifier = Modifier, data: WeatherData, onRefresh:
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        "${data.precipitationChance}% risk för nederbörd",
-                        fontSize = 16.sp,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center
-                    )
                     Spacer(Modifier.height(8.dp))
                     val lastUpdatedText = if (data.lastUpdatedMillis > 0L) {
                         try {
