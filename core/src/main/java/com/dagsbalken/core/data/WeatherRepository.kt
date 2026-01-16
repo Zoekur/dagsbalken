@@ -97,6 +97,7 @@ class WeatherRepository(private val context: Context) {
         private const val TAG = "WeatherRepository"
         private const val GEOCODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6h
         private const val CACHE_MAX_ENTRIES = 64
+        private const val MAX_LOCATION_QUERY_LENGTH = 100
 
         private data class ForwardEntry(val lat: Double, val lon: Double, val displayName: String, val timestamp: Long)
         private data class ReverseEntry(val displayName: String, val timestamp: Long)
@@ -305,9 +306,11 @@ class WeatherRepository(private val context: Context) {
 
     // Save location settings
     suspend fun saveLocationSettings(useCurrent: Boolean, manualName: String) {
+        // Enforce max length to prevent potential storage/processing issues
+        val safeName = manualName.take(MAX_LOCATION_QUERY_LENGTH)
         dataStore.edit { prefs ->
             prefs[WeatherPreferencesKeys.USE_CURRENT_LOCATION] = useCurrent
-            prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] = manualName
+            prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] = safeName
         }
     }
 
@@ -326,9 +329,11 @@ class WeatherRepository(private val context: Context) {
     // Sök efter platser via Open-Meteo Geocoding API
     suspend fun searchLocations(query: String): List<LocationSuggestion> {
         if (query.length < 2) return emptyList()
+        // Enforce max length to prevent DoS/OOM risks with extremely long queries
+        val safeQuery = query.take(MAX_LOCATION_QUERY_LENGTH)
         val suggestions = mutableListOf<LocationSuggestion>()
         try {
-            val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query, "UTF-8")}&count=5&language=sv&format=json"
+            val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(safeQuery, "UTF-8")}&count=5&language=sv&format=json"
             val req = Request.Builder().url(url).get().build()
             val resp = httpClient.newCall(req).awaitResponse()
             resp.use { r ->
