@@ -276,19 +276,22 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = manualLocationText,
                         onValueChange = { newName: String ->
-                            manualLocationText = newName
-                            searchJob?.cancel()
-                            searchJob = scope.launch {
-                                if (newName.length >= 2) {
-                                    delay(500)
-                                    suggestions = weatherRepository.searchLocations(newName)
-                                    showSuggestions = suggestions.isNotEmpty()
-                                } else {
-                                    showSuggestions = false
+                            if (newName.length <= 50) {
+                                manualLocationText = newName
+                                searchJob?.cancel()
+                                searchJob = scope.launch {
+                                    if (newName.length >= 2) {
+                                        delay(500)
+                                        suggestions = weatherRepository.searchLocations(newName)
+                                        showSuggestions = suggestions.isNotEmpty()
+                                    } else {
+                                        showSuggestions = false
+                                    }
                                 }
                             }
                         },
                         label = { Text("Ange ort") },
+                        supportingText = { Text("${manualLocationText.length}/50") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         trailingIcon = {
