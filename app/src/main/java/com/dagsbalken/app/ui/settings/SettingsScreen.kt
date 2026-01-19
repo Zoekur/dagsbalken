@@ -44,6 +44,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -68,6 +72,7 @@ fun SettingsScreen(
     viewModel: MainViewModel? = null // Passed to access visibility settings
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val weatherRepository = remember { WeatherRepository(context) }
 
@@ -276,19 +281,28 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = manualLocationText,
                         onValueChange = { newName: String ->
-                            manualLocationText = newName
-                            searchJob?.cancel()
-                            searchJob = scope.launch {
-                                if (newName.length >= 2) {
-                                    delay(500)
-                                    suggestions = weatherRepository.searchLocations(newName)
-                                    showSuggestions = suggestions.isNotEmpty()
-                                } else {
-                                    showSuggestions = false
+                            if (newName.length <= 50) {
+                                manualLocationText = newName
+                                searchJob?.cancel()
+                                searchJob = scope.launch {
+                                    if (newName.length >= 2) {
+                                        delay(500)
+                                        suggestions = weatherRepository.searchLocations(newName)
+                                        showSuggestions = suggestions.isNotEmpty()
+                                    } else {
+                                        showSuggestions = false
+                                    }
                                 }
                             }
                         },
                         label = { Text("Ange ort") },
+                        supportingText = {
+                            Text("${manualLocationText.length}/50")
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = { focusManager.clearFocus() }
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         trailingIcon = {
