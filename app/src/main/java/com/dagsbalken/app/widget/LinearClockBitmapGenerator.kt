@@ -120,12 +120,22 @@ object LinearClockBitmapGenerator {
 
         // Bolt Optimization: Cached Typeface lookup using nested maps to avoid string allocation
         val style = Typeface.BOLD
-        val fontStyles = typefaceCache.computeIfAbsent(config.font) {
-            ConcurrentHashMap<Int, Typeface>()
+
+        // Manual get/putIfAbsent to avoid lambda object allocation from computeIfAbsent on every update
+        var fontStyles = typefaceCache[config.font]
+        if (fontStyles == null) {
+            val newMap = ConcurrentHashMap<Int, Typeface>()
+            val existing = typefaceCache.putIfAbsent(config.font, newMap)
+            fontStyles = existing ?: newMap
         }
-        paint.typeface = fontStyles.computeIfAbsent(style) { s ->
-            Typeface.create(config.font, s)
+
+        var typeface = fontStyles[style]
+        if (typeface == null) {
+            val newTypeface = Typeface.create(config.font, style)
+            val existing = fontStyles.putIfAbsent(style, newTypeface)
+            typeface = existing ?: newTypeface
         }
+        paint.typeface = typeface
 
         paint.textAlign = Paint.Align.CENTER
 
