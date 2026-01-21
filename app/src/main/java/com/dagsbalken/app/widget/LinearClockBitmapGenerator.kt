@@ -63,7 +63,8 @@ object LinearClockBitmapGenerator {
         // Time Window Logic
         val totalWindowHours = config.hoursToShow.coerceIn(4, 24)
         val windowDurationMinutes = totalWindowHours * 60
-        val minutesPerPixel = windowDurationMinutes.toFloat() / width
+        // Bolt Optimization: Pre-calculate multiplication factor to avoid division in loops
+        val pixelsPerMinute = if (windowDurationMinutes > 0) width.toFloat() / windowDurationMinutes else 0f
 
         val currentMinuteOfDay = currentTime.hour * 60 + currentTime.minute
 
@@ -79,7 +80,7 @@ object LinearClockBitmapGenerator {
         val windowEndMinute = windowStartMinute + windowDurationMinutes
 
         // 2. Draw Passed Time (Gray overlay)
-        val currentX = (currentMinuteOfDay - windowStartMinute) / minutesPerPixel
+        val currentX = (currentMinuteOfDay - windowStartMinute) * pixelsPerMinute
         if (currentX > 0) {
              paint.color = colorPassed
              val passedWidth = currentX.coerceAtMost(width.toFloat())
@@ -92,11 +93,15 @@ object LinearClockBitmapGenerator {
         for (i in events.indices) {
             val event = events[i]
             val startMin = event.start.hour * 60 + event.start.minute
-            val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
-            val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
 
-            val eventStartPx = (startMin - windowStartMinute) / minutesPerPixel
-            val eventWidthPx = (actualEndMin - startMin) / minutesPerPixel
+            // Bolt Optimization: Avoid unnecessary property access if end is null
+            val actualEndMin = event.end?.let {
+                val eMin = it.hour * 60 + it.minute
+                if (eMin > startMin) eMin else null
+            } ?: (startMin + 60)
+
+            val eventStartPx = (startMin - windowStartMinute) * pixelsPerMinute
+            val eventWidthPx = (actualEndMin - startMin) * pixelsPerMinute
 
             if (eventStartPx + eventWidthPx > 0 && eventStartPx < width) {
                 paint.color = event.color
@@ -135,7 +140,7 @@ object LinearClockBitmapGenerator {
 
         for (h in firstHour..lastHour) {
             val hourMin = h * 60
-            val x = (hourMin - windowStartMinute) / minutesPerPixel
+            val x = (hourMin - windowStartMinute) * pixelsPerMinute
 
             if (x >= 0 && x <= width) {
                 // Draw Tick
