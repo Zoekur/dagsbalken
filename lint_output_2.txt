@@ -1,0 +1,111 @@
+Reusing configuration cache.
+> Task :core:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:prepareLintJarForPublish UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :core:javaPreCompileDebug UP-TO-DATE
+> Task :core:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:generateDebugResValues UP-TO-DATE
+> Task :core:prepareDebugArtProfile UP-TO-DATE
+> Task :core:mergeDebugNativeLibs NO-SOURCE
+> Task :core:mergeDebugShaders UP-TO-DATE
+> Task :core:stripDebugDebugSymbols NO-SOURCE
+> Task :core:generateDebugResources UP-TO-DATE
+> Task :core:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :core:compileDebugShaders NO-SOURCE
+> Task :core:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :core:generateDebugAssets UP-TO-DATE
+> Task :core:writeDebugAarMetadata UP-TO-DATE
+> Task :core:packageDebugResources UP-TO-DATE
+> Task :core:packageDebugAssets UP-TO-DATE
+> Task :core:processDebugManifest UP-TO-DATE
+> Task :core:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :core:generateDebugRFile UP-TO-DATE
+> Task :core:compileDebugKotlin UP-TO-DATE
+> Task :core:extractDebugAnnotations UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :core:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :core:mergeDebugJavaResource UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :core:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :core:syncDebugLibJars UP-TO-DATE
+> Task :core:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :core:extractDeepLinksDebug UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :core:bundleDebugLocalLintAar UP-TO-DATE
+> Task :core:compileDebugLibraryResources UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :core:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :core:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:writeDebugLintModelMetadata UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :core:extractProguardFiles UP-TO-DATE
+> Task :core:createFullJarDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:preDebugAndroidTestBuild UP-TO-DATE
+> Task :core:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :core:lintAnalyzeDebug UP-TO-DATE
+> Task :core:generateDebugLintModel UP-TO-DATE
+> Task :core:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:generateDebugAndroidTestLintModel UP-TO-DATE
+> Task :core:generateDebugUnitTestLintModel UP-TO-DATE
+> Task :core:lintAnalyzeDebugAndroidTest UP-TO-DATE
+> Task :core:generateDebugLintReportModel UP-TO-DATE
+> Task :core:lintAnalyzeDebugUnitTest UP-TO-DATE
+
+> Task :app:processDebugResources UP-TO-DATE
+WARNING: We recommend using a newer Android Gradle plugin to use compileSdk = 36
+
+This Android Gradle plugin (8.7.3) was tested up to compileSdk = 35.
+
+You are strongly encouraged to update your project to use a newer
+Android Gradle plugin that has been tested with compileSdk = 36.
+
+If you are already using the latest version of the Android Gradle plugin,
+you may need to wait until a newer version with support for compileSdk = 36 is available.
+
+For more information refer to the compatibility table:
+https://d.android.com/r/tools/api-level-support
+
+To suppress this warning, add/update
+    android.suppressUnsupportedCompileSdk=36
+to this project's gradle.properties.
+
+> Task :core:lintReportDebug
+Wrote HTML report to file:///app/core/build/reports/lint-results-debug.html
+
+> Task :core:lintDebug
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:generateDebugUnitTestLintModel
+> Task :app:generateDebugLintReportModel
+> Task :app:lintAnalyzeDebug
+> Task :app:lintAnalyzeDebugUnitTest
+> Task :app:lintAnalyzeDebugAndroidTest
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///app/app/build/reports/lint-results-debug.html
+
+> Task :app:lintDebug
+
+BUILD SUCCESSFUL in 1m 45s
+68 actionable tasks: 13 executed, 55 up-to-date
+Configuration cache entry reused.
