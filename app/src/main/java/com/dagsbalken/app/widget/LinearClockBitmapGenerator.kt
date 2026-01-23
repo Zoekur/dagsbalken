@@ -63,7 +63,8 @@ object LinearClockBitmapGenerator {
         // Time Window Logic
         val totalWindowHours = config.hoursToShow.coerceIn(4, 24)
         val windowDurationMinutes = totalWindowHours * 60
-        val minutesPerPixel = windowDurationMinutes.toFloat() / width
+        // Bolt Optimization: Pre-calculate multiplication factor to avoid division in loops
+        val pixelsPerMinute = width.toFloat() / windowDurationMinutes
 
         val currentMinuteOfDay = currentTime.hour * 60 + currentTime.minute
 
@@ -79,7 +80,8 @@ object LinearClockBitmapGenerator {
         val windowEndMinute = windowStartMinute + windowDurationMinutes
 
         // 2. Draw Passed Time (Gray overlay)
-        val currentX = (currentMinuteOfDay - windowStartMinute) / minutesPerPixel
+        // Bolt Optimization: Use multiplication
+        val currentX = (currentMinuteOfDay - windowStartMinute) * pixelsPerMinute
         if (currentX > 0) {
              paint.color = colorPassed
              val passedWidth = currentX.coerceAtMost(width.toFloat())
@@ -95,8 +97,9 @@ object LinearClockBitmapGenerator {
             val endMin = (event.end?.hour ?: 0) * 60 + (event.end?.minute ?: 0)
             val actualEndMin = if (event.end != null && endMin > startMin) endMin else startMin + 60
 
-            val eventStartPx = (startMin - windowStartMinute) / minutesPerPixel
-            val eventWidthPx = (actualEndMin - startMin) / minutesPerPixel
+            // Bolt Optimization: Use multiplication
+            val eventStartPx = (startMin - windowStartMinute) * pixelsPerMinute
+            val eventWidthPx = (actualEndMin - startMin) * pixelsPerMinute
 
             if (eventStartPx + eventWidthPx > 0 && eventStartPx < width) {
                 paint.color = event.color
@@ -109,7 +112,7 @@ object LinearClockBitmapGenerator {
                 // Leave 20% top/bottom padding
                 canvas.drawRect(left, height * 0.2f, right, height * 0.8f, paint)
 
-                paint.alpha = 255
+                // Bolt Optimization: Removed redundant paint.alpha = 255
             }
         }
 
@@ -120,11 +123,14 @@ object LinearClockBitmapGenerator {
 
         // Bolt Optimization: Cached Typeface lookup using nested maps to avoid string allocation
         val style = Typeface.BOLD
-        val fontStyles = typefaceCache.computeIfAbsent(config.font) {
-            ConcurrentHashMap<Int, Typeface>()
+        // Bolt Optimization: Avoid lambda allocation by checking get() first
+        val fontStyles = typefaceCache.get(config.font) ?: run {
+            val newMap = ConcurrentHashMap<Int, Typeface>()
+            typefaceCache.putIfAbsent(config.font, newMap) ?: newMap
         }
-        paint.typeface = fontStyles.computeIfAbsent(style) { s ->
-            Typeface.create(config.font, s)
+        paint.typeface = fontStyles.get(style) ?: run {
+            val newTypeface = Typeface.create(config.font, style)
+            fontStyles.putIfAbsent(style, newTypeface) ?: newTypeface
         }
 
         paint.textAlign = Paint.Align.CENTER
@@ -133,14 +139,16 @@ object LinearClockBitmapGenerator {
         val firstHour = (windowStartMinute / 60) - 1
         val lastHour = (windowEndMinute / 60) + 1
 
+        // Bolt Optimization: Hoist constant calculation out of loop
+        val tickHeight = height * 0.3f
+
         for (h in firstHour..lastHour) {
             val hourMin = h * 60
-            val x = (hourMin - windowStartMinute) / minutesPerPixel
+            // Bolt Optimization: Use multiplication
+            val x = (hourMin - windowStartMinute) * pixelsPerMinute
 
             if (x >= 0 && x <= width) {
                 // Draw Tick
-                // Longer tick for 4x2?
-                val tickHeight = height * 0.3f
                 canvas.drawLine(x, 0f, x, tickHeight, paint)
 
                 // Draw Text
