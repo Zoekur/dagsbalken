@@ -276,15 +276,17 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = manualLocationText,
                         onValueChange = { newName: String ->
-                            manualLocationText = newName
-                            searchJob?.cancel()
-                            searchJob = scope.launch {
-                                if (newName.length >= 2) {
-                                    delay(500)
-                                    suggestions = weatherRepository.searchLocations(newName)
-                                    showSuggestions = suggestions.isNotEmpty()
-                                } else {
-                                    showSuggestions = false
+                            if (newName.length <= WeatherRepository.MAX_QUERY_LENGTH) {
+                                manualLocationText = newName
+                                searchJob?.cancel()
+                                searchJob = scope.launch {
+                                    if (newName.length >= 2) {
+                                        delay(500)
+                                        suggestions = weatherRepository.searchLocations(newName)
+                                        showSuggestions = suggestions.isNotEmpty()
+                                    } else {
+                                        showSuggestions = false
+                                    }
                                 }
                             }
                         },
