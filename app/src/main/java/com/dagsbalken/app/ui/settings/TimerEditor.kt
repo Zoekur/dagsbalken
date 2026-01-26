@@ -249,6 +249,9 @@ fun TimerDialog(
     var minutes by remember { mutableStateOf(timer?.durationMinutes?.toString() ?: "15") }
     var selectedColor by remember { mutableStateOf(timer?.colorHex ?: Color.Blue.toArgb()) }
 
+    val maxNameLength = 50
+    val maxDurationLength = 2
+
     val h = hours.toIntOrNull() ?: 0
     val m = minutes.toIntOrNull() ?: 0
     val isFormValid = name.isNotBlank() && (h > 0 || m > 0)
@@ -292,8 +295,10 @@ fun TimerDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
-                        name = it
-                        nameTouched = true
+                        if (it.length <= maxNameLength) {
+                            name = it
+                            nameTouched = true
+                        }
                     },
                     label = { Text("Name") },
                     placeholder = { Text("e.g. Focus Timer") },
@@ -301,8 +306,8 @@ fun TimerDialog(
                     supportingText = {
                         if (isNameError) {
                             Text("Name is required", color = MaterialTheme.colorScheme.error)
-                        } else if (!nameTouched && name.isBlank()) {
-                            Text("* Required")
+                        } else {
+                            Text("${name.length}/$maxNameLength")
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -316,7 +321,11 @@ fun TimerDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = hours,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) hours = it },
+                        onValueChange = {
+                            if (it.length <= maxDurationLength && it.all { char -> char.isDigit() }) {
+                                hours = it
+                            }
+                        },
                         label = { Text("Hours") },
                         suffix = { Text("h") },
                         modifier = Modifier.weight(1f),
@@ -327,7 +336,11 @@ fun TimerDialog(
                     )
                     OutlinedTextField(
                         value = minutes,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) minutes = it },
+                        onValueChange = {
+                            if (it.length <= maxDurationLength && it.all { char -> char.isDigit() }) {
+                                minutes = it
+                            }
+                        },
                         label = { Text("Minutes") },
                         suffix = { Text("m") },
                         modifier = Modifier.weight(1f),
