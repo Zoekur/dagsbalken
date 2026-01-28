@@ -12,3 +12,8 @@
 **Vulnerability:** Swallowing exceptions during data deserialization within a read-modify-write cycle (DataStore `edit` block) leads to data loss. The application would read a "safe" empty list instead of failing, and then overwrite the corrupted on-disk data with a new, nearly empty state.
 **Learning:** "Fail Securely" applies to data integrity too. If data is corrupted, it is better to abort a write transaction than to silently overwrite user data with a reset state.
 **Prevention:** Allow deserialization exceptions to propagate within DataStore `edit` blocks to trigger automatic transaction abortion. Handle exceptions only at the UI read layer (Flows) to prevent crashes.
+
+## 2025-12-12 - Unbounded Input Fields in Compose
+**Vulnerability:** `TimerEditor` text fields allowed unlimited character input, posing UI Denial of Service (DoS) risks and potential OOM crashes.
+**Learning:** Compose `OutlinedTextField` does not enforce length limits by default. Developers must manually implement `if (it.length <= LIMIT)` checks in `onValueChange`.
+**Prevention:** Standardize a `LimitedTextField` wrapper or enforce length checks in all `onValueChange` callbacks for user input.
