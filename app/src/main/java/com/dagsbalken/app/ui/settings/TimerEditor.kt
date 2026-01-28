@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -244,6 +245,8 @@ fun TimerDialog(
     onDismiss: () -> Unit,
     onSave: (TimerModel) -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+    val MAX_NAME_LENGTH = 30
     var name by remember { mutableStateOf(timer?.name ?: "") }
     var hours by remember { mutableStateOf(timer?.durationHours?.toString() ?: "0") }
     var minutes by remember { mutableStateOf(timer?.durationMinutes?.toString() ?: "15") }
@@ -292,17 +295,32 @@ fun TimerDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
-                        name = it
-                        nameTouched = true
+                        if (it.length <= MAX_NAME_LENGTH) {
+                            name = it
+                            nameTouched = true
+                        }
                     },
                     label = { Text("Name") },
                     placeholder = { Text("e.g. Focus Timer") },
                     isError = isNameError,
+                    singleLine = true,
                     supportingText = {
-                        if (isNameError) {
-                            Text("Name is required", color = MaterialTheme.colorScheme.error)
-                        } else if (!nameTouched && name.isBlank()) {
-                            Text("* Required")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Box {
+                                if (isNameError) {
+                                    Text("Name is required", color = MaterialTheme.colorScheme.error)
+                                } else if (!nameTouched && name.isBlank()) {
+                                    Text("* Required")
+                                }
+                            }
+                            Text(
+                                text = "${name.length}/$MAX_NAME_LENGTH",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -336,7 +354,10 @@ fun TimerDialog(
                             imeAction = ImeAction.Done
                         ),
                         keyboardActions = KeyboardActions(
-                            onDone = { submitForm() }
+                            onDone = {
+                                focusManager.clearFocus()
+                                submitForm()
+                            }
                         )
                     )
                 }
