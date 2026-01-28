@@ -64,6 +64,8 @@ import com.dagsbalken.core.data.TimerRepository
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+const val MAX_NAME_LENGTH = 50
+
 @Composable
 fun TimerEditor() {
     val context = LocalContext.current
@@ -292,17 +294,24 @@ fun TimerDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
-                        name = it
-                        nameTouched = true
+                        if (it.length <= MAX_NAME_LENGTH) {
+                            name = it
+                            nameTouched = true
+                        }
                     },
                     label = { Text("Name") },
                     placeholder = { Text("e.g. Focus Timer") },
                     isError = isNameError,
                     supportingText = {
-                        if (isNameError) {
-                            Text("Name is required", color = MaterialTheme.colorScheme.error)
-                        } else if (!nameTouched && name.isBlank()) {
-                            Text("* Required")
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            if (isNameError) {
+                                Text("Name is required", color = MaterialTheme.colorScheme.error)
+                            } else if (!nameTouched && name.isBlank()) {
+                                Text("* Required")
+                            } else {
+                                Spacer(modifier = Modifier.width(1.dp))
+                            }
+                            Text("${name.length} / $MAX_NAME_LENGTH", style = MaterialTheme.typography.bodySmall)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -316,7 +325,7 @@ fun TimerDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = hours,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) hours = it },
+                        onValueChange = { if (it.length <= 2 && it.all { char -> char.isDigit() }) hours = it },
                         label = { Text("Hours") },
                         suffix = { Text("h") },
                         modifier = Modifier.weight(1f),
@@ -327,7 +336,7 @@ fun TimerDialog(
                     )
                     OutlinedTextField(
                         value = minutes,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) minutes = it },
+                        onValueChange = { if (it.length <= 2 && it.all { char -> char.isDigit() }) minutes = it },
                         label = { Text("Minutes") },
                         suffix = { Text("m") },
                         modifier = Modifier.weight(1f),
