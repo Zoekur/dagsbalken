@@ -95,6 +95,7 @@ class WeatherRepository(private val context: Context) {
 
     companion object {
         private const val TAG = "WeatherRepository"
+        private const val MAX_QUERY_LENGTH = 100
         private const val GEOCODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6h
         private const val CACHE_MAX_ENTRIES = 64
 
@@ -325,7 +326,7 @@ class WeatherRepository(private val context: Context) {
 
     // Sök efter platser via Open-Meteo Geocoding API
     suspend fun searchLocations(query: String): List<LocationSuggestion> {
-        if (query.length < 2) return emptyList()
+        if (query.length < 2 || query.length > MAX_QUERY_LENGTH) return emptyList()
         val suggestions = mutableListOf<LocationSuggestion>()
         try {
             val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query, "UTF-8")}&count=5&language=sv&format=json"
