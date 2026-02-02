@@ -12,3 +12,8 @@
 **Vulnerability:** Swallowing exceptions during data deserialization within a read-modify-write cycle (DataStore `edit` block) leads to data loss. The application would read a "safe" empty list instead of failing, and then overwrite the corrupted on-disk data with a new, nearly empty state.
 **Learning:** "Fail Securely" applies to data integrity too. If data is corrupted, it is better to abort a write transaction than to silently overwrite user data with a reset state.
 **Prevention:** Allow deserialization exceptions to propagate within DataStore `edit` blocks to trigger automatic transaction abortion. Handle exceptions only at the UI read layer (Flows) to prevent crashes.
+
+## 2025-12-13 - Phantom Security Controls
+**Vulnerability:** The `WeatherRepository` was documented as enforcing a 100-character limit on search queries to prevent DoS, but the actual code lacked this validation.
+**Learning:** "Phantom" security controls—those that exist in documentation or team memory but not in code—create a false sense of security.
+**Prevention:** Verify every security claim with code and tests. Enforce limits explicitly (e.g., `isValidSearchQuery`) and ensure they are covered by unit tests to prevent regression.
