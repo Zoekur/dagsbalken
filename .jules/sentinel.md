@@ -12,3 +12,8 @@
 **Vulnerability:** Swallowing exceptions during data deserialization within a read-modify-write cycle (DataStore `edit` block) leads to data loss. The application would read a "safe" empty list instead of failing, and then overwrite the corrupted on-disk data with a new, nearly empty state.
 **Learning:** "Fail Securely" applies to data integrity too. If data is corrupted, it is better to abort a write transaction than to silently overwrite user data with a reset state.
 **Prevention:** Allow deserialization exceptions to propagate within DataStore `edit` blocks to trigger automatic transaction abortion. Handle exceptions only at the UI read layer (Flows) to prevent crashes.
+
+## 2025-12-12 - Unbounded Search Query DoS
+**Vulnerability:** `WeatherRepository.searchLocations` accepted unbounded strings, which were URL-encoded and sent to external APIs, posing a potential DoS risk (CPU/Memory/Network).
+**Learning:** Always validate input length at the lowest possible layer (Repository/Domain) before processing or sending it to external systems, not just in the UI.
+**Prevention:** Enforced `MAX_QUERY_LENGTH` (100 chars) in `WeatherRepository` and added `isValidSearchQuery` helper.
