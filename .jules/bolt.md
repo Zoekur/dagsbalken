@@ -5,3 +5,7 @@
 ## 2025-12-20 - Caching Native Assets in Widget Generators
 **Learning:** Even simple calls like `Typeface.create()` involve JNI overhead. In high-frequency paths like widget bitmap generation (every minute), repeated creation of identical immutable objects (fonts) is wasteful.
 **Action:** Use `ConcurrentHashMap.computeIfAbsent` to cache immutable native resources like `Typeface` in the singleton generator, ensuring thread safety and reducing JNI calls.
+
+## 2025-12-21 - Resource Exhaustion in Widgets/Workers
+**Learning:** Instantiating Repositories inside `GlanceAppWidget.provideGlance` or `Worker.doWork` creates new instances frequently. If these repositories own heavy resources like `OkHttpClient` (which has its own thread pool), it leads to resource exhaustion and excessive memory usage.
+**Action:** Move heavy resources (like `OkHttpClient`) to a `companion object` or a singleton dependency to ensure they are shared across all transient repository instances.
