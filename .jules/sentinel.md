@@ -12,3 +12,8 @@
 **Vulnerability:** Swallowing exceptions during data deserialization within a read-modify-write cycle (DataStore `edit` block) leads to data loss. The application would read a "safe" empty list instead of failing, and then overwrite the corrupted on-disk data with a new, nearly empty state.
 **Learning:** "Fail Securely" applies to data integrity too. If data is corrupted, it is better to abort a write transaction than to silently overwrite user data with a reset state.
 **Prevention:** Allow deserialization exceptions to propagate within DataStore `edit` blocks to trigger automatic transaction abortion. Handle exceptions only at the UI read layer (Flows) to prevent crashes.
+
+## 2025-12-14 - Testability of Android Dependencies
+**Vulnerability:** Inability to test critical serialization logic because it depended on Android classes (`JSONObject`) which are stubbed in unit tests.
+**Learning:** Coupling business logic (serialization) to Android framework classes prevents easy unit testing, leading to unverified security fixes.
+**Prevention:** Use `testImplementation("org.json:json:...")` to provide a working implementation for JVM tests, or better, decouple logic into pure Kotlin modules.
