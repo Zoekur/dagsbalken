@@ -91,6 +91,7 @@ import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.UiCustomBlock
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.settings.AppPreferences
+import com.dagsbalken.app.ui.settings.ScheduleSettingsScreen
 import com.dagsbalken.app.ui.settings.SettingsScreen
 import com.dagsbalken.app.ui.settings.ThemePreferences
 import com.dagsbalken.app.ui.settings.TimerDialog
@@ -110,6 +111,14 @@ import com.dagsbalken.core.workers.WeatherWorker
 import com.dagsbalken.core.dagskompisen.WeatherContext
 import com.dagsbalken.core.dagskompisen.WeatherCondition
 import com.dagsbalken.app.ui.dagskompisen.WeatherAssistantCard
+import com.dagsbalken.app.ui.debug.DebugWeatherScreen
+import com.dagsbalken.core.schedule.DailySymbolPlacement
+import com.dagsbalken.core.schedule.IconStyle
+import com.dagsbalken.core.schedule.TimelineSymbolSchedule
+import com.dagsbalken.core.schedule.TimelineSymbolScheduleRepositoryImpl
+import com.dagsbalken.core.schedule.glyphForIcon
+import com.dagsbalken.core.schedule.symbolPlacementsFor
+import com.dagsbalken.core.settings.SchoolModeRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -139,6 +148,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeOption by viewModel.themeOptionFlow.collectAsState(initial = ThemeOption.Cold)
+            val iconStyle by viewModel.iconStyleFlow.collectAsState(initial = IconStyle.EmojiClassic)
 
             DagsbalkenTheme(themeOption = themeOption) {
                 Surface(
@@ -152,6 +162,7 @@ class MainActivity : ComponentActivity() {
                             LinearClockScreen(
                                 viewModel = viewModel,
                                 themeOption = themeOption,
+                                iconStyle = iconStyle,
                                 onThemeOptionChange = {
                                     viewModel.onThemeOptionChange(it)
                                 },
@@ -167,7 +178,20 @@ class MainActivity : ComponentActivity() {
                                 onBack = {
                                     navController.popBackStack()
                                 },
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                onOpenScheduleSettings = { navController.navigate("schedule_settings") },
+                                onOpenWeatherDebug = { navController.navigate("debug_weather") }
+                            )
+                        }
+                        composable("schedule_settings") {
+                            ScheduleSettingsScreen(onBack = { navController.popBackStack() })
+                        }
+                        composable("debug_weather") {
+                            val context = LocalContext.current
+                            val weatherRepository = remember { WeatherRepository(context) }
+                            DebugWeatherScreen(
+                                weatherRepository = weatherRepository,
+                                onBack = { navController.popBackStack() }
                             )
                         }
                     }
@@ -183,6 +207,7 @@ class MainActivity : ComponentActivity() {
 fun LinearClockScreen(
     viewModel: MainViewModel,
     themeOption: ThemeOption,
+    iconStyle: IconStyle,
     onThemeOptionChange: (ThemeOption) -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -290,6 +315,15 @@ fun LinearClockScreen(
                 else -> null
             }
         }
+    }
+
+    val scheduleRepo = remember { TimelineSymbolScheduleRepositoryImpl(context) }
+    val schoolModeRepo = remember { SchoolModeRepository(context) }
+    val symbolSchedule by scheduleRepo.scheduleFlow.collectAsState(initial = TimelineSymbolSchedule())
+    val schoolModeEnabled by schoolModeRepo.schoolModeEnabledFlow.collectAsState(initial = false)
+
+    val todayPlacements: List<DailySymbolPlacement> = remember(symbolSchedule, schoolModeEnabled, today) {
+        symbolSchedule.symbolPlacementsFor(today, schoolModeEnabled)
     }
 
     val allItems = remember(calendarEvents, todaysTimers) {
@@ -439,7 +473,7 @@ fun LinearClockScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 8.dp)
     ) {
         Column(
             modifier = Modifier
@@ -470,7 +504,10 @@ fun LinearClockScreen(
                     now = now.toLocalTime(),
                     height = 168.dp,
                     items = unwrappedItems,
-                    themeOption = themeOption
+                    themeOption = themeOption,
+                    symbolPlacements = todayPlacements,
+                    symbolSchedule = symbolSchedule,
+                    iconStyle = iconStyle
                 )
                 Spacer(Modifier.height(16.dp))
             }
@@ -576,7 +613,10 @@ fun LinearDayCard(
     now: LocalTime,
     height: Dp = 160.dp,
     items: List<CustomBlock> = emptyList(),
-    themeOption: ThemeOption
+    themeOption: ThemeOption,
+    symbolPlacements: List<DailySymbolPlacement> = emptyList(),
+    symbolSchedule: TimelineSymbolSchedule? = null,
+    iconStyle: IconStyle
 ) {
     val cornerRadiusDp = 28.dp
     val nightColor = themeOption.timelineNightColor
@@ -598,19 +638,14 @@ fun LinearDayCard(
         // This prevents the drawWithCache builder from re-running (and re-allocating Brush) every minute
         val currentNowState = rememberUpdatedState(now)
         val currentItemsState = rememberUpdatedState(items)
+        val currentSymbolsState = rememberUpdatedState(symbolSchedule)
+        val currentPlacementsState = rememberUpdatedState(symbolPlacements)
+        val currentIconStyleState = rememberUpdatedState<IconStyle>(iconStyle)
 
-        // Bolt Optimization: Pre-calculate colors to avoid Color object construction in draw loop
-        val cachedColors = remember(items) {
-            items.map { it.color?.let { c -> Color(c) } ?: Color.Gray }
-        }
-        val currentColorsState = rememberUpdatedState(cachedColors)
-
-        // Tidslinje med drawWithCache
         val drawModifier = remember(themeOption, tickColor, majorTickColor, nowColor) {
             Modifier.drawWithCache {
                 val width = size.width
                 val heightPx = size.height
-
                 val gradientBrush = Brush.horizontalGradient(
                     0.0f to nightColor,
                     0.25f to blendColors(nightColor, dayColor, 0.4f),
@@ -620,14 +655,14 @@ fun LinearDayCard(
                     startX = 0f,
                     endX = width
                 )
-
                 val pxPerMin = width / (24 * 60)
 
                 onDrawBehind {
-                    // Read stable state inside draw phase to trigger redraw without rebuilding cache
                     val currentNow = currentNowState.value
                     val currentItems = currentItemsState.value
-                    val currentColors = currentColorsState.value
+                    val currentSchedule = currentSymbolsState.value
+                    val currentPlacements = currentPlacementsState.value
+                    val currentIconStyle = currentIconStyleState.value
 
                     val currentMinutes = currentNow.hour * 60 + currentNow.minute
                     val currentX = currentMinutes * pxPerMin
@@ -640,11 +675,9 @@ fun LinearDayCard(
                     )
 
                     // 2. Rita events/timers
-                    for (i in currentItems.indices) {
-                        val item = currentItems[i]
+                    currentItems.forEach { item ->
                         val startMin = item.startTime.hour * 60 + item.startTime.minute
                         val endMin = item.endTime.hour * 60 + item.endTime.minute
-
                         val actualEndMin = if (endMin > startMin) {
                             endMin
                         } else if (item.startTime == LocalTime.MIDNIGHT) {
@@ -656,9 +689,7 @@ fun LinearDayCard(
                         val eventStartPx = startMin * pxPerMin
                         val eventWidthPx = (actualEndMin - startMin) * pxPerMin
 
-                        // Bolt Optimization: Use pre-calculated color and drawRect alpha param
-                        // to avoid Color.copy() allocation in draw loop
-                        val color = if (i < currentColors.size) currentColors[i] else Color.Gray
+                        val color = item.color?.let { Color(it) } ?: Color.Gray
 
                         drawRect(
                             color = color,
@@ -698,6 +729,34 @@ fun LinearDayCard(
                         strokeWidth = 4f,
                         cap = StrokeCap.Square
                     )
+
+                    // 5. Användarsymboler
+                    if (currentSchedule != null && currentPlacements.isNotEmpty()) {
+                        currentPlacements.forEach { placement ->
+                            val symbol = currentSchedule.symbols.firstOrNull { it.id == placement.symbolId }
+                            if (symbol != null) {
+                                val midMin = (placement.timeRange.startMinutes + placement.timeRange.endMinutes) / 2f
+                                val x = midMin * pxPerMin
+                                if (x < 0f || x > width) return@forEach
+
+                                val glyph = glyphForIcon(symbol.iconKey, currentIconStyle)
+                                drawContext.canvas.nativeCanvas.apply {
+                                    val textPaint = android.graphics.Paint().apply {
+                                        isAntiAlias = true
+                                        color = android.graphics.Color.WHITE
+                                        textAlign = android.graphics.Paint.Align.CENTER
+                                        textSize = heightPx * 0.15f
+                                    }
+                                    drawText(
+                                        glyph,
+                                        x,
+                                        heightPx * 0.3f,
+                                        textPaint
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -789,7 +848,7 @@ fun TimerTimelineSection(
                 timers.forEach { timer ->
                     TimerCountdownCard(
                         timer = timer,
-                        now = now,
+                        now = LocalTime.now(),
                         themeOption = themeOption,
                         onDelete = { onDeleteTimer(timer.block.id) }
                     )

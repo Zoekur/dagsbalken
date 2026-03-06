@@ -9,15 +9,12 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.state.PreferencesGlanceStateDefinition
-import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -27,11 +24,6 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
 import androidx.glance.currentState
 import com.dagsbalken.core.data.CalendarRepository
 import com.dagsbalken.core.data.WeatherRepository
@@ -39,9 +31,14 @@ import com.dagsbalken.core.data.DayEvent
 import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
+import com.dagsbalken.core.schedule.DailySymbolPlacement
+import com.dagsbalken.core.schedule.TimelineSymbolSchedule
+import com.dagsbalken.core.schedule.TimelineSymbolScheduleRepositoryImpl
+import com.dagsbalken.core.schedule.symbolPlacementsFor
+import com.dagsbalken.core.settings.SchoolModeRepository
+import java.time.LocalDate
 import java.time.LocalTime
-
-import com.dagsbalken.app.widget.LinearClockBitmapGenerator
+import kotlinx.coroutines.flow.first
 
 object LinearClockWidget : GlanceAppWidget() {
 
@@ -58,9 +55,14 @@ object LinearClockWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val weatherRepo = WeatherRepository(context)
         val calendarRepo = CalendarRepository(context)
+        val scheduleRepo = TimelineSymbolScheduleRepositoryImpl(context)
+        val schoolModeRepo = SchoolModeRepository(context)
 
         // Hämta event (detta sker vid uppdatering)
         val events = calendarRepo.getEventsForToday()
+        val schedule = scheduleRepo.getCurrent()
+        val schoolMode = schoolModeRepo.schoolModeEnabledFlow.first()
+        val todayPlacements = schedule.symbolPlacementsFor(LocalDate.now(), schoolMode)
 
         provideContent {
             val weatherData by weatherRepo.weatherDataFlow.collectAsState(initial = null)
@@ -80,7 +82,7 @@ object LinearClockWidget : GlanceAppWidget() {
                 clockSize = prefs[LinearClockPrefs.CLOCK_SIZE] ?: LinearClockPrefs.DEF_CLOCK_SIZE
             )
 
-            LinearClockWidgetContent(weatherData, events, config)
+            LinearClockWidgetContent(weatherData, events, config, todayPlacements, schedule)
         }
     }
 }
@@ -89,7 +91,9 @@ object LinearClockWidget : GlanceAppWidget() {
 private fun LinearClockWidgetContent(
     weatherData: WeatherData?,
     events: List<DayEvent>,
-    config: WidgetConfig
+    config: WidgetConfig,
+    symbolPlacements: List<DailySymbolPlacement>,
+    symbolSchedule: TimelineSymbolSchedule
 ) {
     val context = LocalContext.current
     val size = LocalSize.current
@@ -131,7 +135,9 @@ private fun LinearClockWidgetContent(
                     height = heightPx,
                     events = eventsToShow,
                     config = config,
-                    currentTime = LocalTime.now()
+                    currentTime = LocalTime.now(),
+                    symbolPlacements = symbolPlacements,
+                    symbolSchedule = symbolSchedule
                 )
 
                 Image(

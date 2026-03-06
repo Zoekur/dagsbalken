@@ -49,6 +49,10 @@ object WeatherPreferencesKeys {
     val LAST_UPDATED = longPreferencesKey("weather_last_updated")
     val FORWARD_GEOCODE_CACHE = stringPreferencesKey("forward_geocode_cache")
     val REVERSE_GEOCODE_CACHE = stringPreferencesKey("reverse_geocode_cache")
+
+    // Mock / debug keys
+    val MOCK_ENABLED = booleanPreferencesKey("weather_mock_enabled")
+    val MOCK_JSON = stringPreferencesKey("weather_mock_json")
 }
 
 // Data class för att representera väderdata i Compose
@@ -259,10 +263,10 @@ class WeatherRepository(private val context: Context) {
     // Flow som tillhandahåller väderdata i realtid till Compose
     val weatherDataFlow = dataStore.data
         .map { prefs ->
-            WeatherData(
+            val real = WeatherData(
                 temperatureCelsius = prefs[WeatherPreferencesKeys.TEMP_CELSIUS] ?: 15,
                 precipitationChance = prefs[WeatherPreferencesKeys.PRECIP_CHANCE] ?: 0,
-                adviceIcon = prefs[WeatherPreferencesKeys.IS_COLD_ADVICE] ?: "☁️",
+                adviceIcon = prefs[WeatherPreferencesKeys.IS_COLD_ADVICE] ?: "\u2601\ufe0f",
                 adviceText = prefs[WeatherPreferencesKeys.ADVICE_TEXT] ?: "Väntar på data...",
                 clothingType = prefs[WeatherPreferencesKeys.CLOTHING_TYPE] ?: "NORMAL",
                 isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false,
@@ -270,7 +274,111 @@ class WeatherRepository(private val context: Context) {
                 lastUpdatedMillis = prefs[WeatherPreferencesKeys.LAST_UPDATED] ?: 0L,
                 provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
             )
+
+            val mockEnabled = prefs[WeatherPreferencesKeys.MOCK_ENABLED] ?: false
+            val mockJson = prefs[WeatherPreferencesKeys.MOCK_JSON]
+
+            if (!mockEnabled || mockJson.isNullOrBlank()) {
+                real
+            } else {
+                parseMockWeatherJson(mockJson) ?: real
+            }
         }
+
+    // Flow that exposes whether mock mode is enabled
+    val isMockWeatherEnabledFlow: Flow<Boolean> = dataStore.data
+        .map { prefs -> prefs[WeatherPreferencesKeys.MOCK_ENABLED] ?: false }
+
+    // Sätter mock-läge (debug). I release-builds kan detta ignoreras om så önskas.
+    suspend fun setMockWeatherEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[WeatherPreferencesKeys.MOCK_ENABLED] = enabled
+        }
+    }
+
+    // Sparar mock-väderdata som JSON
+    suspend fun saveMockWeatherData(data: WeatherData) {
+        dataStore.edit { prefs ->
+            prefs[WeatherPreferencesKeys.MOCK_JSON] = serializeMockWeatherJson(data)
+        }
+    }
+
+    // Rensar mockdata
+    suspend fun clearMockWeatherData() {
+        dataStore.edit { prefs ->
+            prefs.remove(WeatherPreferencesKeys.MOCK_JSON)
+            prefs[WeatherPreferencesKeys.MOCK_ENABLED] = false
+        }
+    }
+
+    // Hämtar en ögonblicksbild av nuvarande effektiva väderdata (inklusive ev. mock)
+    suspend fun getEffectiveWeatherOnce(): WeatherData {
+        val prefs = dataStore.data.first()
+        val real = WeatherData(
+            temperatureCelsius = prefs[WeatherPreferencesKeys.TEMP_CELSIUS] ?: 15,
+            precipitationChance = prefs[WeatherPreferencesKeys.PRECIP_CHANCE] ?: 0,
+            adviceIcon = prefs[WeatherPreferencesKeys.IS_COLD_ADVICE] ?: "\u2601\ufe0f",
+            adviceText = prefs[WeatherPreferencesKeys.ADVICE_TEXT] ?: "Väntar på data...",
+            clothingType = prefs[WeatherPreferencesKeys.CLOTHING_TYPE] ?: "NORMAL",
+            isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false,
+            locationName = prefs[WeatherPreferencesKeys.LOCATION_NAME] ?: "",
+            lastUpdatedMillis = prefs[WeatherPreferencesKeys.LAST_UPDATED] ?: 0L,
+            provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
+        )
+        val mockEnabled = prefs[WeatherPreferencesKeys.MOCK_ENABLED] ?: false
+        val mockJson = prefs[WeatherPreferencesKeys.MOCK_JSON]
+        return if (!mockEnabled || mockJson.isNullOrBlank()) real else parseMockWeatherJson(mockJson) ?: real
+    }
+
+    // Hämtar en ögonblicksbild av endast real-data (utan mock-overlay)
+    suspend fun getRealWeatherOnce(): WeatherData {
+        val prefs = dataStore.data.first()
+        return WeatherData(
+            temperatureCelsius = prefs[WeatherPreferencesKeys.TEMP_CELSIUS] ?: 15,
+            precipitationChance = prefs[WeatherPreferencesKeys.PRECIP_CHANCE] ?: 0,
+            adviceIcon = prefs[WeatherPreferencesKeys.IS_COLD_ADVICE] ?: "\u2601\ufe0f",
+            adviceText = prefs[WeatherPreferencesKeys.ADVICE_TEXT] ?: "Väntar på data...",
+            clothingType = prefs[WeatherPreferencesKeys.CLOTHING_TYPE] ?: "NORMAL",
+            isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false,
+            locationName = prefs[WeatherPreferencesKeys.LOCATION_NAME] ?: "",
+            lastUpdatedMillis = prefs[WeatherPreferencesKeys.LAST_UPDATED] ?: 0L,
+            provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
+        )
+    }
+
+    private fun serializeMockWeatherJson(data: WeatherData): String {
+        return JSONObject()
+            .put("temperatureCelsius", data.temperatureCelsius)
+            .put("precipitationChance", data.precipitationChance)
+            .put("adviceIcon", data.adviceIcon)
+            .put("adviceText", data.adviceText)
+            .put("clothingType", data.clothingType)
+            .put("isDataLoaded", data.isDataLoaded)
+            .put("locationName", data.locationName)
+            .put("lastUpdatedMillis", data.lastUpdatedMillis)
+            .put("provider", data.provider)
+            .toString()
+    }
+
+    private fun parseMockWeatherJson(json: String): WeatherData? {
+        return try {
+            val obj = JSONObject(json)
+            WeatherData(
+                temperatureCelsius = obj.optInt("temperatureCelsius", 15),
+                precipitationChance = obj.optInt("precipitationChance", 0),
+                adviceIcon = obj.optString("adviceIcon", "\u2601\ufe0f"),
+                adviceText = obj.optString("adviceText", "Väntar på data..."),
+                clothingType = obj.optString("clothingType", "NORMAL"),
+                isDataLoaded = obj.optBoolean("isDataLoaded", true),
+                locationName = obj.optString("locationName", ""),
+                lastUpdatedMillis = obj.optLong("lastUpdatedMillis", System.currentTimeMillis()),
+                provider = obj.optString("provider", "Mock")
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse mock weather json", e)
+            null
+        }
+    }
 
     // Flow for location settings
     val locationSettingsFlow: Flow<WeatherLocationSettings> = dataStore.data
@@ -395,7 +503,30 @@ class WeatherRepository(private val context: Context) {
 
         var temp: Int
         var precipChance: Int
-        var locationName: String = ""
+        var locationName = ""
+
+        // If provider is explicit Mock, skip network and always generate deterministic mock
+        if (provider == "Mock") {
+            if (useCurrent) {
+                temp = 20
+                precipChance = 10
+                locationName = if (manualName.isNotBlank()) manualName else "Mock-plats"
+            } else {
+                if (manualName.isNotBlank()) {
+                    val seed = manualName.length
+                    temp = (seed % 30)
+                    precipChance = (seed * 7 % 100)
+                    locationName = manualName
+                } else {
+                    temp = 18
+                    precipChance = 0
+                    locationName = "Mock-plats"
+                }
+            }
+            saveWeatherData(temp, precipChance, locationName, provider)
+            persistCachesIfNeeded()
+            return true
+        }
 
         if (provider == "Open-Meteo") {
             // Determine coordinates

@@ -6,6 +6,9 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.dagsbalken.core.data.DayEvent
+import com.dagsbalken.core.schedule.DailySymbolPlacement
+import com.dagsbalken.core.schedule.TimelineSymbolSchedule
+import com.dagsbalken.core.schedule.resolveSymbol
 import com.dagsbalken.core.widget.LinearClockPrefs
 import com.dagsbalken.core.widget.WidgetConfig
 import java.time.LocalTime
@@ -30,7 +33,9 @@ object LinearClockBitmapGenerator {
         height: Int,
         events: List<DayEvent>,
         config: WidgetConfig,
-        currentTime: LocalTime = LocalTime.now()
+        currentTime: LocalTime = LocalTime.now(),
+        symbolPlacements: List<DailySymbolPlacement> = emptyList(),
+        symbolSchedule: TimelineSymbolSchedule? = null
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -155,7 +160,41 @@ object LinearClockBitmapGenerator {
             canvas.drawLine(currentX, 0f, currentX, height.toFloat(), paint)
         }
 
-        // 6. Border
+        // 6. Draw user symbols on top of timeline
+        if (symbolPlacements.isNotEmpty() && symbolSchedule != null) {
+            paint.color = colorBorder
+            paint.textAlign = Paint.Align.CENTER
+            paint.textSize = 18f * config.scale
+
+            for (placement in symbolPlacements) {
+                val midMinute = (placement.timeRange.startMinutes + placement.timeRange.endMinutes) / 2f
+                val x = (midMinute - windowStartMinute) / minutesPerPixel
+                if (x < 0f || x > width.toFloat()) continue
+
+                val symbol = symbolSchedule.resolveSymbol(placement) ?: continue
+                // Very simple mapping: show a small emoji-like glyph based on iconKey
+                val glyph = when (symbol.iconKey) {
+                    "food" -> "🍽"
+                    "school" -> "🏫"
+                    "sport" -> "🏃"
+                    "sleep" -> "😴"
+                    else -> "★"
+                }
+
+                // Draw a small marker circle
+                paint.style = Paint.Style.FILL
+                paint.color = symbol.colorArgb
+                val cy = height * 0.15f
+                val radius = (height * 0.06f).coerceAtLeast(6f)
+                canvas.drawCircle(x, cy, radius, paint)
+
+                // Draw glyph above or inside circle using text
+                paint.color = colorBorder
+                canvas.drawText(glyph, x, cy - radius - 4f, paint)
+            }
+        }
+
+        // 7. Border
         paint.color = colorBorder
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 4f

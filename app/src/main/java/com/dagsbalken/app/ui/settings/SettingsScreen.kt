@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +50,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.dagsbalken.app.AodActivity
+import com.dagsbalken.app.BuildConfig
 import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.components.ColorPicker
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
@@ -55,6 +58,8 @@ import com.dagsbalken.app.ui.theme.ThemeOption
 import com.dagsbalken.app.ui.theme.ThemeSelector
 import com.dagsbalken.core.data.WeatherLocationSettings
 import com.dagsbalken.core.data.WeatherRepository
+import com.dagsbalken.core.schedule.IconStyle
+import com.dagsbalken.core.settings.SchoolModeRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,7 +70,9 @@ fun SettingsScreen(
     currentTheme: ThemeOption,
     onThemeSelected: (ThemeOption) -> Unit,
     onBack: () -> Unit,
-    viewModel: MainViewModel? = null // Passed to access visibility settings
+    viewModel: MainViewModel? = null,
+    onOpenScheduleSettings: () -> Unit,
+    onOpenWeatherDebug: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -86,6 +93,9 @@ fun SettingsScreen(
     val aodColor = viewModel?.aodColorFlow?.collectAsState(initial = -65536) // Default Red
     val aodOpacity = viewModel?.aodOpacityFlow?.collectAsState(initial = 0.5f)
     val aodPositionPercent = viewModel?.aodPositionPercentFlow?.collectAsState(initial = 5f)
+
+    // Icon Style (only if ViewModel is available)
+    val iconStyle: IconStyle? = viewModel?.iconStyleFlow?.collectAsState(initial = IconStyle.EmojiClassic)?.value
 
     LaunchedEffect(locationSettings.manualLocationName) {
         if (manualLocationText != locationSettings.manualLocationName) {
@@ -366,9 +376,114 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            if (BuildConfig.DEBUG) {
+                Text("Debug", style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenWeatherDebug() }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Weather debug tools",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Icon(
+                        imageVector = DagsbalkenIcons.Settings,
+                        contentDescription = null
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             Text("Kalender", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Kalenderkälla: Enhetskalender", style = MaterialTheme.typography.bodyMedium)
+
+            // Schema & symboler navigation
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenScheduleSettings() }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Schema & symboler",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Icon(
+                    imageVector = DagsbalkenIcons.Settings,
+                    contentDescription = null
+                )
+            }
+
+            // School Mode Section
+            if (viewModel != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Skolläge", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val schoolModeRepository = remember { SchoolModeRepository(context) }
+                val schoolModeEnabled by schoolModeRepository.schoolModeEnabledFlow.collectAsState(initial = false)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val newValue = !schoolModeEnabled
+                            scope.launch { schoolModeRepository.setSchoolModeEnabled(newValue) }
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Visa endast skolschema",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Switch(
+                        checked = schoolModeEnabled,
+                        onCheckedChange = { checked ->
+                            scope.launch { schoolModeRepository.setSchoolModeEnabled(checked) }
+                        }
+                    )
+                }
+            }
+
+            // Icon Style Section
+            if (viewModel != null && iconStyle != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Tidslinjesymboler", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    IconStyleOptionRow(
+                        label = "Emoji (standard)",
+                        preview = "Mat 🍽  Skola 🏫  Sova 😴",
+                        selected = iconStyle == IconStyle.EmojiClassic,
+                        onClick = { viewModel.onIconStyleChange(IconStyle.EmojiClassic) }
+                    )
+                    IconStyleOptionRow(
+                        label = "Enkel",
+                        preview = "Mat 🍴  Skola 🎒  Sova 🌙",
+                        selected = iconStyle == IconStyle.EmojiSimple,
+                        onClick = { viewModel.onIconStyleChange(IconStyle.EmojiSimple) }
+                    )
+                    IconStyleOptionRow(
+                        label = "Hög kontrast",
+                        preview = "Mat 🍽  Skola 🎓  Sova 🛏",
+                        selected = iconStyle == IconStyle.EmojiHighContrast,
+                        onClick = { viewModel.onIconStyleChange(IconStyle.EmojiHighContrast) }
+                    )
+                }
+            }
         }
     }
 }
@@ -392,5 +507,34 @@ fun SettingsToggle(title: String, checked: Boolean, onCheckedChange: (Boolean) -
             modifier = Modifier.weight(1f)
         )
         Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+@Composable
+private fun IconStyleOptionRow(
+    label: String,
+    preview: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (selected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
