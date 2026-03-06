@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -41,6 +42,9 @@ dependencies {
 
     // HTTP client for network calls
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
+
+    // JSON serialization
+    implementation(libs.kotlinx.serialization.json)
 
     // Unit testing
     testImplementation("junit:junit:4.13.2")

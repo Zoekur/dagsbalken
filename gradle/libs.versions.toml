@@ -15,6 +15,7 @@ datastorePreferences = "1.1.1"
 accompanist = "0.36.0"
 wearCompose = "1.4.0"
 wearWatchface = "1.2.1"
+serialization = "1.7.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,6 +47,7 @@ androidx-wear-watchface-complications-rendering = { group = "androidx.wear.watch
 androidx-wear-watchface-data = { group = "androidx.wear.watchface", name = "watchface-data", version.ref = "wearWatchface" }
 androidx-wear-watchface-style = { group = "androidx.wear.watchface", name = "watchface-style", version.ref = "wearWatchface" }
 androidx-wear-watchface-editor = { group = "androidx.wear.watchface", name = "watchface-editor", version.ref = "wearWatchface" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -55,3 +57,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 org-jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.dagsbalken.core.schedule.IconStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -27,6 +29,10 @@ class AppPreferences(context: Context) {
         val AOD_COLOR = intPreferencesKey("aod_color")
         val AOD_OPACITY = floatPreferencesKey("aod_opacity")
         val AOD_POSITION_PERCENT = floatPreferencesKey("aod_position_percent")
+    }
+
+    private object Keys {
+        val ICON_STYLE = stringPreferencesKey("timeline_icon_style")
     }
 
     val showClock: Flow<Boolean> = appContext.appSettingsDataStore.data
@@ -52,6 +58,16 @@ class AppPreferences(context: Context) {
 
     val aodPositionPercent: Flow<Float> = appContext.appSettingsDataStore.data
         .map { prefs -> prefs[AOD_POSITION_PERCENT] ?: 5f }
+
+    val iconStyleFlow: Flow<IconStyle> = appContext.appSettingsDataStore.data
+        .map { prefs ->
+            when (prefs[Keys.ICON_STYLE]) {
+                IconStyle.EmojiSimple.name -> IconStyle.EmojiSimple
+                IconStyle.EmojiHighContrast.name -> IconStyle.EmojiHighContrast
+                IconStyle.EmojiClassic.name, null -> IconStyle.EmojiClassic
+                else -> IconStyle.EmojiClassic
+            }
+        }
 
     suspend fun setShowClock(show: Boolean) {
         appContext.appSettingsDataStore.edit { it[SHOW_CLOCK] = show }
@@ -83,5 +99,11 @@ class AppPreferences(context: Context) {
 
     suspend fun setAodPositionPercent(positionPercent: Float) {
         appContext.appSettingsDataStore.edit { it[AOD_POSITION_PERCENT] = positionPercent }
+    }
+
+    suspend fun setIconStyle(style: IconStyle) {
+        appContext.appSettingsDataStore.edit { prefs ->
+            prefs[Keys.ICON_STYLE] = style.name
+        }
     }
 }

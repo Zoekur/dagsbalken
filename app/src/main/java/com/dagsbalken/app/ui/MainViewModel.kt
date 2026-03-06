@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dagsbalken.app.ui.settings.AppPreferences
 import com.dagsbalken.app.ui.settings.ThemePreferences
 import com.dagsbalken.app.ui.theme.ThemeOption
+import com.dagsbalken.core.schedule.IconStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -27,6 +28,9 @@ class MainViewModel(
     val aodOpacityFlow = appPreferences.aodOpacity
     val aodPositionPercentFlow = appPreferences.aodPositionPercent
 
+    // Icon Style Flow
+    val iconStyleFlow: Flow<IconStyle> = appPreferences.iconStyleFlow
+
     fun onThemeOptionChange(option: ThemeOption) {
         viewModelScope.launch {
             themePreferences.setThemeOption(option)
@@ -42,4 +46,10 @@ class MainViewModel(
     fun setAodColor(color: Int) = viewModelScope.launch { appPreferences.setAodColor(color) }
     fun setAodOpacity(opacity: Float) = viewModelScope.launch { appPreferences.setAodOpacity(opacity) }
     fun setAodPositionPercent(positionPercent: Float) = viewModelScope.launch { appPreferences.setAodPositionPercent(positionPercent) }
+
+    fun onIconStyleChange(style: IconStyle) {
+        viewModelScope.launch {
+            appPreferences.setIconStyle(style)
+        }
+    }
 }
