@@ -101,6 +101,7 @@ class WeatherRepository(private val context: Context) {
         private const val TAG = "WeatherRepository"
         private const val GEOCODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6h
         private const val CACHE_MAX_ENTRIES = 64
+        private const val MAX_INPUT_LENGTH = 100 // Security limit for user input
 
         private data class ForwardEntry(val lat: Double, val lon: Double, val displayName: String, val timestamp: Long)
         private data class ReverseEntry(val displayName: String, val timestamp: Long)
@@ -413,9 +414,10 @@ class WeatherRepository(private val context: Context) {
 
     // Save location settings
     suspend fun saveLocationSettings(useCurrent: Boolean, manualName: String) {
+        val safeName = manualName.take(MAX_INPUT_LENGTH)
         dataStore.edit { prefs ->
             prefs[WeatherPreferencesKeys.USE_CURRENT_LOCATION] = useCurrent
-            prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] = manualName
+            prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] = safeName
         }
     }
 
@@ -428,12 +430,16 @@ class WeatherRepository(private val context: Context) {
 
     // Spara en manuellt vald plats i cachen så att fetchAndSaveWeatherOnce hittar den direkt
     fun cacheManualLocation(name: String, lat: Double, lon: Double) {
-        putForwardCache(name, ForwardEntry(lat, lon, name, System.currentTimeMillis()))
+        val safeName = name.take(MAX_INPUT_LENGTH)
+        putForwardCache(safeName, ForwardEntry(lat, lon, safeName, System.currentTimeMillis()))
     }
 
     // Sök efter platser via Open-Meteo Geocoding API
     suspend fun searchLocations(query: String): List<LocationSuggestion> {
         if (query.length < 2) return emptyList()
+        // Input validation to prevent DoS/Abuse
+        if (query.length > MAX_INPUT_LENGTH) return emptyList()
+
         val suggestions = mutableListOf<LocationSuggestion>()
         try {
             val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query, "UTF-8")}&count=5&language=sv&format=json"
