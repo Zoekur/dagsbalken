@@ -25,7 +25,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -351,25 +354,38 @@ fun SettingsScreen(
             val providerOptions = listOf("Open-Meteo", "Mock")
             var expanded by remember { mutableStateOf(false) }
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "$currentProvider",
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = currentProvider,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Leverantör") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { expanded = true }
-                        .padding(12.dp),
-                    style = MaterialTheme.typography.bodyMedium
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
                     providerOptions.forEach { p ->
-                        DropdownMenuItem(text = { Text(p) }, onClick = {
-                            expanded = false
-                            scope.launch {
-                                weatherRepository.saveProvider(p)
-                                val success = weatherRepository.fetchAndSaveWeatherOnce()
-                                Toast.makeText(context, if (success) "Väder uppdaterat från $p" else "Uppdatering misslyckades, använder fallback", Toast.LENGTH_SHORT).show()
+                        DropdownMenuItem(
+                            text = { Text(p) },
+                            onClick = {
+                                expanded = false
+                                scope.launch {
+                                    weatherRepository.saveProvider(p)
+                                    val success = weatherRepository.fetchAndSaveWeatherOnce()
+                                    Toast.makeText(context, if (success) "Väder uppdaterat från $p" else "Uppdatering misslyckades, använder fallback", Toast.LENGTH_SHORT).show()
+                                }
                             }
-                        })
+                        )
                     }
                 }
             }
