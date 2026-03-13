@@ -14,11 +14,15 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,26 +32,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,8 +65,8 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +82,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -95,6 +99,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.UiCustomBlock
+import com.dagsbalken.app.ui.dagskompisen.WeatherAssistantCard
+import com.dagsbalken.app.ui.debug.DebugWeatherScreen
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
 import com.dagsbalken.app.ui.settings.AppPreferences
 import com.dagsbalken.app.ui.settings.ScheduleSettingsScreen
@@ -104,20 +110,16 @@ import com.dagsbalken.app.ui.settings.TimerDialog
 import com.dagsbalken.app.ui.theme.DagsbalkenTheme
 import com.dagsbalken.app.ui.theme.ThemeOption
 import com.dagsbalken.app.utils.blendColors
+import com.dagsbalken.core.dagskompisen.WeatherCondition
+import com.dagsbalken.core.dagskompisen.WeatherContext
 import com.dagsbalken.core.data.BlockType
-import com.dagsbalken.core.data.CustomBlock
 import com.dagsbalken.core.data.CalendarRepository
+import com.dagsbalken.core.data.CustomBlock
 import com.dagsbalken.core.data.DayEvent
-import com.dagsbalken.core.data.TimerModel
 import com.dagsbalken.core.data.TimerRepository
 import com.dagsbalken.core.data.WeatherData
 import com.dagsbalken.core.data.WeatherLocationSettings
 import com.dagsbalken.core.data.WeatherRepository
-import com.dagsbalken.core.workers.WeatherWorker
-import com.dagsbalken.core.dagskompisen.WeatherContext
-import com.dagsbalken.core.dagskompisen.WeatherCondition
-import com.dagsbalken.app.ui.dagskompisen.WeatherAssistantCard
-import com.dagsbalken.app.ui.debug.DebugWeatherScreen
 import com.dagsbalken.core.schedule.DailySymbolPlacement
 import com.dagsbalken.core.schedule.IconStyle
 import com.dagsbalken.core.schedule.TimelineSymbolSchedule
@@ -125,6 +127,7 @@ import com.dagsbalken.core.schedule.TimelineSymbolScheduleRepositoryImpl
 import com.dagsbalken.core.schedule.glyphForIcon
 import com.dagsbalken.core.schedule.symbolPlacementsFor
 import com.dagsbalken.core.settings.SchoolModeRepository
+import com.dagsbalken.core.workers.WeatherWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -667,6 +670,7 @@ fun LinearDayCard(
     val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val nowColor = MaterialTheme.colorScheme.error
     var zoomCenterMinute by rememberSaveable { mutableStateOf<Int?>(null) }
+    var timelineWidthPx by remember { mutableStateOf(0f) }
     val isZoomed = zoomCenterMinute != null
     val visibleWindowMinutes = 6 * 60
 
@@ -687,6 +691,16 @@ fun LinearDayCard(
     }
     val visibleStartMinute = visibleRange.first
     val visibleEndMinute = visibleRange.second
+    val dragState = rememberDraggableState { delta ->
+        if (!isZoomed || timelineWidthPx <= 0f) return@rememberDraggableState
+
+        val visibleDuration = (visibleEndMinute - visibleStartMinute).coerceAtLeast(1)
+        val draggedMinutes = (delta / timelineWidthPx) * visibleDuration
+        val currentCenter = zoomCenterMinute ?: return@rememberDraggableState
+
+        zoomCenterMinute = (currentCenter - draggedMinutes.roundToInt())
+            .coerceIn(0, 24 * 60)
+    }
 
     Box(
         Modifier
@@ -856,7 +870,13 @@ fun LinearDayCard(
         Spacer(
             modifier = Modifier
                 .fillMaxSize()
+                .onSizeChanged { timelineWidthPx = it.width.toFloat() }
                 .then(drawModifier)
+                .draggable(
+                    state = dragState,
+                    orientation = Orientation.Horizontal,
+                    enabled = isZoomed
+                )
                 .pointerInput(visibleStartMinute, visibleEndMinute) {
                     detectTapGestures(
                         onTap = { offset ->
@@ -900,19 +920,20 @@ fun CalendarSection(
         ) {
             Text("Kalender", style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Add, "Lägg till händelse")
+                }
                 IconButton(onClick = onAddCustomBlockClick, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Add, "Lägg till eget block")
-                }
-                if (upcomingItems.isNotEmpty()) {
-                    IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Add, "Lägg till händelse")
-                    }
                 }
             }
         }
 
         if (upcomingItems.isEmpty()) {
-            EmptyStateCard(text = "Inget planerat", onClick = onAddCustomBlockClick)
+            CalendarEmptyStateCard(
+                onAddEventClick = onAddEventClick,
+                onAddCustomBlockClick = onAddCustomBlockClick
+            )
         } else {
             upcomingItems.forEach { item ->
                 key(item.block.id) {
@@ -1166,6 +1187,47 @@ fun EmptyStateCard(text: String, onClick: () -> Unit) {
             )
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun CalendarEmptyStateCard(
+    onAddEventClick: () -> Unit,
+    onAddCustomBlockClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Inget planerat",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = onAddEventClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Lägg till kalenderhändelse")
+            }
+            Button(
+                onClick = onAddCustomBlockClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Lägg till eget block")
+            }
         }
     }
 }
