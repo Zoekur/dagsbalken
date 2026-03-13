@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,17 +66,17 @@ fun DebugWeatherScreen(
 
     LaunchedEffect(Unit) {
         // Starta med nuvarande effektiva väderdata som förval i formuläret.
-        // Om ingen explicit mock finns än, använd samma deterministiska mocklogik
-        // som fetchAndSaveWeatherOnce använder när provider är "Mock".
+        // Om ingen explicit hittepå-data finns än, använd samma deterministiska logik
+        // som fetchAndSaveWeatherOnce använder när provider är "Hittepå".
         val prefsBased = weatherRepository.getEffectiveWeatherOnce()
 
         val base: WeatherData = if (!prefsBased.isDataLoaded) {
-            // Generera en default-mock enligt samma princip som provider == "Mock"
+            // Generera hittepå-data enligt samma princip som provider == "Hittepå"
             val locationSettings = weatherRepository.locationSettingsFlow.first()
             val useCurrent = locationSettings.useCurrentLocation
             val manualName = locationSettings.manualLocationName
             val (temp, precip, loc) = if (useCurrent) {
-                Triple(20, 10, if (manualName.isNotBlank()) manualName else "Mock-plats")
+                Triple(20, 10, if (manualName.isNotBlank()) manualName else "Hittepå-plats")
             } else {
                 if (manualName.isNotBlank()) {
                     val seed = manualName.length
@@ -84,19 +84,19 @@ fun DebugWeatherScreen(
                     val precipSeed = (seed * 7) % 100
                     Triple(tempSeed, precipSeed, manualName)
                 } else {
-                    Triple(18, 0, "Mock-plats")
+                    Triple(18, 0, "Hittepå-plats")
                 }
             }
             WeatherData(
                 temperatureCelsius = temp,
                 precipitationChance = precip,
                 adviceIcon = "☁️",
-                adviceText = "Mock-data",
+                adviceText = "Hittepå-data",
                 clothingType = "NORMAL",
                 isDataLoaded = true,
                 locationName = loc,
                 lastUpdatedMillis = System.currentTimeMillis(),
-                provider = "Mock"
+                provider = "Hittepå"
             )
         } else {
             prefsBased
@@ -108,7 +108,7 @@ fun DebugWeatherScreen(
         adviceText = base.adviceText
         clothingTypeText = base.clothingType
         locationText = base.locationName
-        providerText = base.provider.ifBlank { "Mock" }
+        providerText = base.provider.ifBlank { "Hittepå" }
         lastUpdatedText = if (base.lastUpdatedMillis > 0L) base.lastUpdatedMillis.toString() else System.currentTimeMillis().toString()
     }
 
@@ -118,7 +118,7 @@ fun DebugWeatherScreen(
                 title = { Text("Weather Debug") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -133,7 +133,7 @@ fun DebugWeatherScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Läge: " + if (mockEnabled) "MOCK" else "REAL",
+                text = "Läge: " + if (mockEnabled) "HITTEPÅ" else "REAL",
                 style = MaterialTheme.typography.titleMedium,
                 color = if (mockEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
@@ -167,7 +167,7 @@ fun DebugWeatherScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Använd mock-väderdata", style = MaterialTheme.typography.bodyMedium)
+                Text("Använd hittepå-väderdata", style = MaterialTheme.typography.bodyMedium)
                 Switch(
                     checked = mockEnabled,
                     onCheckedChange = { enabled ->
@@ -180,7 +180,7 @@ fun DebugWeatherScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            Text("Mock-data (redigerbar)", style = MaterialTheme.typography.titleMedium)
+            Text("Hittepå-data (redigerbar)", style = MaterialTheme.typography.titleMedium)
 
             OutlinedTextField(
                 value = tempText,
@@ -262,7 +262,7 @@ fun DebugWeatherScreen(
                             adviceText = real.adviceText
                             clothingTypeText = real.clothingType
                             locationText = real.locationName
-                            providerText = real.provider.ifBlank { "Mock" }
+                            providerText = real.provider.ifBlank { "Hittepå" }
                             lastUpdatedText = (if (real.lastUpdatedMillis > 0L) real.lastUpdatedMillis else System.currentTimeMillis()).toString()
                         }
                     }
@@ -286,33 +286,33 @@ fun DebugWeatherScreen(
                                 temperatureCelsius = temp,
                                 precipitationChance = precip,
                                 adviceIcon = adviceIconText.ifBlank { "☁️" },
-                                adviceText = adviceText.ifBlank { "Mock-data" },
+                                adviceText = adviceText.ifBlank { "Hittepå-data" },
                                 clothingType = clothingTypeText.ifBlank { "NORMAL" },
                                 isDataLoaded = true,
                                 locationName = locationText,
                                 lastUpdatedMillis = lastUpdated,
-                                provider = providerText.ifBlank { "Mock" }
+                                provider = providerText.ifBlank { "Hittepå" }
                             )
                             weatherRepository.saveMockWeatherData(data)
                             weatherRepository.setMockWeatherEnabled(true)
-                            Toast.makeText(context, "Mock-väder sparat", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Hittepå-väder sparat", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Spara mock-data")
+                    Text("Spara hittepå-data")
                 }
 
                 Button(
                     onClick = {
                         scope.launch {
                             weatherRepository.clearMockWeatherData()
-                            Toast.makeText(context, "Mock-data rensad", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Hittepå-data rensad", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Rensa mock")
+                    Text("Rensa hittepå")
                 }
             }
         }

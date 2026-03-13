@@ -101,6 +101,10 @@ class WeatherRepository(private val context: Context) {
         private const val TAG = "WeatherRepository"
         private const val GEOCODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6h
         private const val CACHE_MAX_ENTRIES = 64
+        private const val PROVIDER_OPEN_METEO = "Open-Meteo"
+        private const val PROVIDER_MOCK_LEGACY = "Mock"
+        private const val PROVIDER_HITTEPA = "Hittepå"
+        private const val HITTEPA_LOCATION = "Hittepå-plats"
 
         private data class ForwardEntry(val lat: Double, val lon: Double, val displayName: String, val timestamp: Long)
         private data class ReverseEntry(val displayName: String, val timestamp: Long)
@@ -117,6 +121,11 @@ class WeatherRepository(private val context: Context) {
 
         private fun normalizedQuery(query: String): String = query.trim().lowercase(Locale.getDefault())
         private fun reverseKey(lat: Double, lon: Double): String = String.format(Locale.US, "%.4f,%.4f", lat, lon)
+        private fun normalizeProviderName(provider: String?): String = when (provider?.trim()) {
+            null, "" -> PROVIDER_OPEN_METEO
+            PROVIDER_MOCK_LEGACY, PROVIDER_HITTEPA -> PROVIDER_HITTEPA
+            else -> provider
+        }
 
         private fun getForwardCache(query: String): ForwardEntry? = synchronized(forwardCache) {
             val key = normalizedQuery(query)
@@ -272,7 +281,7 @@ class WeatherRepository(private val context: Context) {
                 isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false,
                 locationName = prefs[WeatherPreferencesKeys.LOCATION_NAME] ?: "",
                 lastUpdatedMillis = prefs[WeatherPreferencesKeys.LAST_UPDATED] ?: 0L,
-                provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
+                provider = normalizeProviderName(prefs[WeatherPreferencesKeys.PROVIDER])
             )
 
             val mockEnabled = prefs[WeatherPreferencesKeys.MOCK_ENABLED] ?: false
@@ -323,7 +332,7 @@ class WeatherRepository(private val context: Context) {
             isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false,
             locationName = prefs[WeatherPreferencesKeys.LOCATION_NAME] ?: "",
             lastUpdatedMillis = prefs[WeatherPreferencesKeys.LAST_UPDATED] ?: 0L,
-            provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
+            provider = normalizeProviderName(prefs[WeatherPreferencesKeys.PROVIDER])
         )
         val mockEnabled = prefs[WeatherPreferencesKeys.MOCK_ENABLED] ?: false
         val mockJson = prefs[WeatherPreferencesKeys.MOCK_JSON]
@@ -342,7 +351,7 @@ class WeatherRepository(private val context: Context) {
             isDataLoaded = prefs[WeatherPreferencesKeys.DATA_LOADED] ?: false,
             locationName = prefs[WeatherPreferencesKeys.LOCATION_NAME] ?: "",
             lastUpdatedMillis = prefs[WeatherPreferencesKeys.LAST_UPDATED] ?: 0L,
-            provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
+            provider = normalizeProviderName(prefs[WeatherPreferencesKeys.PROVIDER])
         )
     }
 
@@ -356,7 +365,7 @@ class WeatherRepository(private val context: Context) {
             .put("isDataLoaded", data.isDataLoaded)
             .put("locationName", data.locationName)
             .put("lastUpdatedMillis", data.lastUpdatedMillis)
-            .put("provider", data.provider)
+            .put("provider", normalizeProviderName(data.provider))
             .toString()
     }
 
@@ -372,7 +381,7 @@ class WeatherRepository(private val context: Context) {
                 isDataLoaded = obj.optBoolean("isDataLoaded", true),
                 locationName = obj.optString("locationName", ""),
                 lastUpdatedMillis = obj.optLong("lastUpdatedMillis", System.currentTimeMillis()),
-                provider = obj.optString("provider", "Mock")
+                provider = normalizeProviderName(obj.optString("provider", PROVIDER_HITTEPA))
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse mock weather json", e)
@@ -391,11 +400,12 @@ class WeatherRepository(private val context: Context) {
 
     // Flow for provider
     val providerFlow: Flow<String> = dataStore.data
-        .map { prefs -> prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo" }
+        .map { prefs -> normalizeProviderName(prefs[WeatherPreferencesKeys.PROVIDER]) }
 
     // Skriver ny väderdata till DataStore
     suspend fun saveWeatherData(temp: Int, precipChance: Int, locationName: String = "", provider: String = "") {
         val (adviceText, adviceIcon, clothingType) = generateClothingAdvice(temp, precipChance)
+        val normalizedProvider = normalizeProviderName(provider)
 
         val now = System.currentTimeMillis()
         dataStore.edit { prefs ->
@@ -407,7 +417,7 @@ class WeatherRepository(private val context: Context) {
             prefs[WeatherPreferencesKeys.DATA_LOADED] = true
             prefs[WeatherPreferencesKeys.LOCATION_NAME] = locationName
             prefs[WeatherPreferencesKeys.LAST_UPDATED] = now
-            prefs[WeatherPreferencesKeys.PROVIDER] = provider
+            prefs[WeatherPreferencesKeys.PROVIDER] = normalizedProvider
         }
     }
 
@@ -422,7 +432,7 @@ class WeatherRepository(private val context: Context) {
     // Save provider
     suspend fun saveProvider(providerName: String) {
         dataStore.edit { prefs ->
-            prefs[WeatherPreferencesKeys.PROVIDER] = providerName
+            prefs[WeatherPreferencesKeys.PROVIDER] = normalizeProviderName(providerName)
         }
     }
 
@@ -499,18 +509,18 @@ class WeatherRepository(private val context: Context) {
         val prefs = dataStore.data.first()
         val useCurrent = prefs[WeatherPreferencesKeys.USE_CURRENT_LOCATION] ?: true
         val manualName = prefs[WeatherPreferencesKeys.MANUAL_LOCATION_NAME] ?: ""
-        val provider = prefs[WeatherPreferencesKeys.PROVIDER] ?: "Open-Meteo"
+        val provider = normalizeProviderName(prefs[WeatherPreferencesKeys.PROVIDER])
 
         var temp: Int
         var precipChance: Int
         var locationName = ""
 
-        // If provider is explicit Mock, skip network and always generate deterministic mock
-        if (provider == "Mock") {
+        // If provider is explicit Hittepå/legacy Mock, skip network and always generate deterministic fake weather
+        if (provider == PROVIDER_HITTEPA) {
             if (useCurrent) {
                 temp = 20
                 precipChance = 10
-                locationName = if (manualName.isNotBlank()) manualName else "Mock-plats"
+                locationName = if (manualName.isNotBlank()) manualName else HITTEPA_LOCATION
             } else {
                 if (manualName.isNotBlank()) {
                     val seed = manualName.length
@@ -520,7 +530,7 @@ class WeatherRepository(private val context: Context) {
                 } else {
                     temp = 18
                     precipChance = 0
-                    locationName = "Mock-plats"
+                    locationName = HITTEPA_LOCATION
                 }
             }
             saveWeatherData(temp, precipChance, locationName, provider)
@@ -528,7 +538,7 @@ class WeatherRepository(private val context: Context) {
             return true
         }
 
-        if (provider == "Open-Meteo") {
+        if (provider == PROVIDER_OPEN_METEO) {
             // Determine coordinates
             var lat: Double? = null
             var lon: Double? = null

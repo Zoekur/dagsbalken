@@ -32,12 +32,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -140,352 +143,371 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Theme Section
-            Text("Tema", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            ThemeSelector(
-                selectedOption = currentTheme,
-                onOptionSelected = onThemeSelected
+            val settingsTabs = listOfNotNull(
+                SettingsTab.TimeWeatherAndLocation,
+                SettingsTab.SchoolAndChildren,
+                SettingsTab.Debug.takeIf { BuildConfig.DEBUG }
             )
+            var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+            val activeTabIndex = selectedTabIndex.coerceIn(0, settingsTabs.lastIndex)
+            val selectedTab = settingsTabs[activeTabIndex]
 
-            if (viewModel != null) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Visa på startsidan", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Toggles
-                SettingsToggle("Tidslinje", showClock?.value ?: true) { viewModel.setShowClock(it) }
-                SettingsToggle("Kalender (Events)", showEvents?.value ?: true) { viewModel.setShowEvents(it) }
-                SettingsToggle("Timers", showTimers?.value ?: true) { viewModel.setShowTimers(it) }
-                SettingsToggle("Väderkort", showWeather?.value ?: true) { viewModel.setShowWeather(it) }
-                SettingsToggle("Klädrådskort", showClothing?.value ?: true) { viewModel.setShowClothing(it) }
-
-                // AOD Settings Section
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Nattläge / AOD", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text("Strimma-färg", style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                ColorPicker(
-                    selectedColor = aodColor?.value ?: -65536,
-                    onColorSelected = { viewModel.setAodColor(it) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Ljusstyrka (Opacitet): ${((aodOpacity?.value ?: 0.5f) * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Slider(
-                    value = aodOpacity?.value ?: 0.5f,
-                    onValueChange = { viewModel.setAodOpacity(it) },
-                    valueRange = 0.1f..1.0f
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Vertikal position: ${(aodPositionPercent?.value ?: 5f).toInt()}% från toppen",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Slider(
-                    value = aodPositionPercent?.value ?: 5f,
-                    onValueChange = { viewModel.setAodPositionPercent(it.coerceIn(0f, 100f)) },
-                    valueRange = 0f..100f
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val intent = Intent(context, AodActivity::class.java)
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Starta Nattläge Manuellt")
+            TabRow(selectedTabIndex = activeTabIndex) {
+                settingsTabs.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = index == activeTabIndex,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(tab.title) }
+                    )
                 }
-                Text(
-                    text = "Tips: Du kan också välja Dagsbalken som skärmsläckare i Androids inställningar för att starta detta automatiskt vid laddning.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("Väder", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Location Settings
-            Text("Plats", style = MaterialTheme.typography.titleSmall)
-
-            // Toggle for Current Location
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                         val newValue = !locationSettings.useCurrentLocation
-                         if (newValue) {
-                             // Check permission before enabling
-                             val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                             if (hasPermission) {
-                                 scope.launch { weatherRepository.saveLocationSettings(true, locationSettings.manualLocationName) }
-                             } else {
-                                 locationPermissionLauncher.launch(
-                                     arrayOf(
-                                         Manifest.permission.ACCESS_COARSE_LOCATION,
-                                         Manifest.permission.ACCESS_FINE_LOCATION
-                                     )
-                                 )
-                             }
-                         } else {
-                             scope.launch { weatherRepository.saveLocationSettings(false, locationSettings.manualLocationName) }
-                         }
-                    }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Använd nuvarande position",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Switch(
-                    checked = locationSettings.useCurrentLocation,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                             val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                             if (hasPermission) {
-                                 scope.launch { weatherRepository.saveLocationSettings(true, locationSettings.manualLocationName) }
-                             } else {
-                                 locationPermissionLauncher.launch(
-                                     arrayOf(
-                                         Manifest.permission.ACCESS_COARSE_LOCATION,
-                                         Manifest.permission.ACCESS_FINE_LOCATION
-                                     )
-                                 )
-                             }
-                        } else {
-                            scope.launch { weatherRepository.saveLocationSettings(false, locationSettings.manualLocationName) }
-                        }
-                    }
-                )
-            }
-
-            // Manual Location Input
-            if (!locationSettings.useCurrentLocation) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                var suggestions by remember { mutableStateOf(emptyList<WeatherRepository.LocationSuggestion>()) }
-                var showSuggestions by remember { mutableStateOf(false) }
-                var searchJob by remember { mutableStateOf<Job?>(null) }
-
-                Column {
-                    OutlinedTextField(
-                        value = manualLocationText,
-                        onValueChange = { newName: String ->
-                            manualLocationText = newName
-                            searchJob?.cancel()
-                            searchJob = scope.launch {
-                                if (newName.length >= 2) {
-                                    delay(500)
-                                    suggestions = weatherRepository.searchLocations(newName)
-                                    showSuggestions = suggestions.isNotEmpty()
-                                } else {
-                                    showSuggestions = false
-                                }
-                            }
-                        },
-                        label = { Text("Ange ort") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        trailingIcon = {
-                            if (manualLocationText.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    manualLocationText = ""
-                                    suggestions = emptyList()
-                                    showSuggestions = false
-                                    searchJob?.cancel()
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Rensa" // "Clear" in Swedish
-                                    )
-                                }
-                            }
-                        }
+            when (selectedTab) {
+                SettingsTab.TimeWeatherAndLocation -> {
+                    Text("Tema", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ThemeSelector(
+                        selectedOption = currentTheme,
+                        onOptionSelected = onThemeSelected
                     )
 
-                    if (showSuggestions) {
-                        DropdownMenu(
-                            expanded = showSuggestions,
-                            onDismissRequest = { showSuggestions = false },
+                    if (viewModel != null) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Visa på startsidan", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsToggle("Tidslinje", showClock?.value ?: true) { viewModel.setShowClock(it) }
+                        SettingsToggle("Kalender (Events)", showEvents?.value ?: true) { viewModel.setShowEvents(it) }
+                        SettingsToggle("Timers", showTimers?.value ?: true) { viewModel.setShowTimers(it) }
+                        SettingsToggle("Väderkort", showWeather?.value ?: true) { viewModel.setShowWeather(it) }
+                        SettingsToggle("Klädrådskort", showClothing?.value ?: true) { viewModel.setShowClothing(it) }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Nattläge / AOD", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text("Strimma-färg", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ColorPicker(
+                            selectedColor = aodColor?.value ?: -65536,
+                            onColorSelected = { viewModel.setAodColor(it) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Ljusstyrka (Opacitet): ${((aodOpacity?.value ?: 0.5f) * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Slider(
+                            value = aodOpacity?.value ?: 0.5f,
+                            onValueChange = { viewModel.setAodOpacity(it) },
+                            valueRange = 0.1f..1.0f
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Vertikal position: ${(aodPositionPercent?.value ?: 5f).toInt()}% från toppen",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Slider(
+                            value = aodPositionPercent?.value ?: 5f,
+                            onValueChange = { viewModel.setAodPositionPercent(it.coerceIn(0f, 100f)) },
+                            valueRange = 0f..100f
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, AodActivity::class.java)
+                                context.startActivity(intent)
+                            },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            suggestions.forEach { suggestion ->
-                                DropdownMenuItem(
-                                    text = { Text(suggestion.displayName()) },
-                                    onClick = {
-                                        manualLocationText = suggestion.displayName()
-                                        showSuggestions = false
-                                        scope.launch {
-                                            weatherRepository.cacheManualLocation(suggestion.displayName(), suggestion.latitude, suggestion.longitude)
-                                            weatherRepository.saveLocationSettings(false, suggestion.displayName())
-                                            weatherRepository.fetchAndSaveWeatherOnce()
+                            Text("Starta Nattläge Manuellt")
+                        }
+                        Text(
+                            text = "Tips: Du kan också välja Dagsbalken som skärmsläckare i Androids inställningar för att starta detta automatiskt vid laddning.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text("Väder", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Plats", style = MaterialTheme.typography.titleSmall)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val newValue = !locationSettings.useCurrentLocation
+                                if (newValue) {
+                                    val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                    if (hasPermission) {
+                                        scope.launch { weatherRepository.saveLocationSettings(true, locationSettings.manualLocationName) }
+                                    } else {
+                                        locationPermissionLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                                Manifest.permission.ACCESS_FINE_LOCATION
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    scope.launch { weatherRepository.saveLocationSettings(false, locationSettings.manualLocationName) }
+                                }
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Använd nuvarande position",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Switch(
+                            checked = locationSettings.useCurrentLocation,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                    if (hasPermission) {
+                                        scope.launch { weatherRepository.saveLocationSettings(true, locationSettings.manualLocationName) }
+                                    } else {
+                                        locationPermissionLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                                Manifest.permission.ACCESS_FINE_LOCATION
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    scope.launch { weatherRepository.saveLocationSettings(false, locationSettings.manualLocationName) }
+                                }
+                            }
+                        )
+                    }
+
+                    if (!locationSettings.useCurrentLocation) {
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        var suggestions by remember { mutableStateOf(emptyList<WeatherRepository.LocationSuggestion>()) }
+                        var showSuggestions by remember { mutableStateOf(false) }
+                        var searchJob by remember { mutableStateOf<Job?>(null) }
+
+                        Column {
+                            OutlinedTextField(
+                                value = manualLocationText,
+                                onValueChange = { newName: String ->
+                                    manualLocationText = newName
+                                    searchJob?.cancel()
+                                    searchJob = scope.launch {
+                                        if (newName.length >= 2) {
+                                            delay(500)
+                                            suggestions = weatherRepository.searchLocations(newName)
+                                            showSuggestions = suggestions.isNotEmpty()
+                                        } else {
+                                            showSuggestions = false
                                         }
                                     }
-                                )
+                                },
+                                label = { Text("Ange ort") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                trailingIcon = {
+                                    if (manualLocationText.isNotEmpty()) {
+                                        IconButton(onClick = {
+                                            manualLocationText = ""
+                                            suggestions = emptyList()
+                                            showSuggestions = false
+                                            searchJob?.cancel()
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Clear,
+                                                contentDescription = "Rensa"
+                                            )
+                                        }
+                                    }
+                                }
+                            )
+
+                            if (showSuggestions) {
+                                DropdownMenu(
+                                    expanded = showSuggestions,
+                                    onDismissRequest = { showSuggestions = false },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    suggestions.forEach { suggestion ->
+                                        DropdownMenuItem(
+                                            text = { Text(suggestion.displayName()) },
+                                            onClick = {
+                                                manualLocationText = suggestion.displayName()
+                                                showSuggestions = false
+                                                scope.launch {
+                                                    weatherRepository.cacheManualLocation(suggestion.displayName(), suggestion.latitude, suggestion.longitude)
+                                                    weatherRepository.saveLocationSettings(false, suggestion.displayName())
+                                                    weatherRepository.fetchAndSaveWeatherOnce()
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text("Välj väderleverantör", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val providerOptions = listOf("Open-Meteo", "Hittepå")
+                    var expanded by remember { mutableStateOf(false) }
+
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = currentProvider,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { expanded = true }
+                                .padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            providerOptions.forEach { p ->
+                                DropdownMenuItem(text = { Text(p) }, onClick = {
+                                    expanded = false
+                                    scope.launch {
+                                        weatherRepository.saveProvider(p)
+                                        val success = weatherRepository.fetchAndSaveWeatherOnce()
+                                        Toast.makeText(context, if (success) "Väder uppdaterat från $p" else "Uppdatering misslyckades, använder fallback", Toast.LENGTH_SHORT).show()
+                                    }
+                                })
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                SettingsTab.SchoolAndChildren -> {
+                    Text("Kalender", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Kalenderkälla: Enhetskalender", style = MaterialTheme.typography.bodyMedium)
 
-            Text("Välj väderleverantör", style = MaterialTheme.typography.titleSmall)
-            Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenScheduleSettings() }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Schema & symboler",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Icon(
+                            imageVector = DagsbalkenIcons.Settings,
+                            contentDescription = null
+                        )
+                    }
 
-            val providerOptions = listOf("Open-Meteo", "Mock")
-            var expanded by remember { mutableStateOf(false) }
+                    if (viewModel != null) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Skolläge", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "$currentProvider",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expanded = true }
-                        .padding(12.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    providerOptions.forEach { p ->
-                        DropdownMenuItem(text = { Text(p) }, onClick = {
-                            expanded = false
-                            scope.launch {
-                                weatherRepository.saveProvider(p)
-                                val success = weatherRepository.fetchAndSaveWeatherOnce()
-                                Toast.makeText(context, if (success) "Väder uppdaterat från $p" else "Uppdatering misslyckades, använder fallback", Toast.LENGTH_SHORT).show()
-                            }
-                        })
+                        val schoolModeRepository = remember { SchoolModeRepository(context) }
+                        val schoolModeEnabled by schoolModeRepository.schoolModeEnabledFlow.collectAsState(initial = false)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val newValue = !schoolModeEnabled
+                                    scope.launch { schoolModeRepository.setSchoolModeEnabled(newValue) }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Visa endast skolschema",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = schoolModeEnabled,
+                                onCheckedChange = { checked ->
+                                    scope.launch { schoolModeRepository.setSchoolModeEnabled(checked) }
+                                }
+                            )
+                        }
+                    }
+
+                    if (viewModel != null && iconStyle != null) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Tidslinjesymboler", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Column(Modifier.padding(horizontal = 16.dp)) {
+                            IconStyleOptionRow(
+                                label = "Emoji (standard)",
+                                preview = "Mat 🍽  Skola 🏫  Sova 😴",
+                                selected = iconStyle == IconStyle.EmojiClassic,
+                                onClick = { viewModel.onIconStyleChange(IconStyle.EmojiClassic) }
+                            )
+                            IconStyleOptionRow(
+                                label = "Enkel",
+                                preview = "Mat 🍴  Skola 🎒  Sova 🌙",
+                                selected = iconStyle == IconStyle.EmojiSimple,
+                                onClick = { viewModel.onIconStyleChange(IconStyle.EmojiSimple) }
+                            )
+                            IconStyleOptionRow(
+                                label = "Hög kontrast",
+                                preview = "Mat 🍽  Skola 🎓  Sova 🛏",
+                                selected = iconStyle == IconStyle.EmojiHighContrast,
+                                onClick = { viewModel.onIconStyleChange(IconStyle.EmojiHighContrast) }
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (BuildConfig.DEBUG) {
-                Text("Debug", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenWeatherDebug() }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Weather debug tools",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Icon(
-                        imageVector = DagsbalkenIcons.Settings,
-                        contentDescription = null
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            Text("Kalender", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Kalenderkälla: Enhetskalender", style = MaterialTheme.typography.bodyMedium)
-
-            // Schema & symboler navigation
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpenScheduleSettings() }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Schema & symboler",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Icon(
-                    imageVector = DagsbalkenIcons.Settings,
-                    contentDescription = null
-                )
-            }
-
-            // School Mode Section
-            if (viewModel != null) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Skolläge", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val schoolModeRepository = remember { SchoolModeRepository(context) }
-                val schoolModeEnabled by schoolModeRepository.schoolModeEnabledFlow.collectAsState(initial = false)
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            val newValue = !schoolModeEnabled
-                            scope.launch { schoolModeRepository.setSchoolModeEnabled(newValue) }
-                        }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Visa endast skolschema",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Switch(
-                        checked = schoolModeEnabled,
-                        onCheckedChange = { checked ->
-                            scope.launch { schoolModeRepository.setSchoolModeEnabled(checked) }
-                        }
-                    )
-                }
-            }
-
-            // Icon Style Section
-            if (viewModel != null && iconStyle != null) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Tidslinjesymboler", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Column(Modifier.padding(horizontal = 16.dp)) {
-                    IconStyleOptionRow(
-                        label = "Emoji (standard)",
-                        preview = "Mat 🍽  Skola 🏫  Sova 😴",
-                        selected = iconStyle == IconStyle.EmojiClassic,
-                        onClick = { viewModel.onIconStyleChange(IconStyle.EmojiClassic) }
-                    )
-                    IconStyleOptionRow(
-                        label = "Enkel",
-                        preview = "Mat 🍴  Skola 🎒  Sova 🌙",
-                        selected = iconStyle == IconStyle.EmojiSimple,
-                        onClick = { viewModel.onIconStyleChange(IconStyle.EmojiSimple) }
-                    )
-                    IconStyleOptionRow(
-                        label = "Hög kontrast",
-                        preview = "Mat 🍽  Skola 🎓  Sova 🛏",
-                        selected = iconStyle == IconStyle.EmojiHighContrast,
-                        onClick = { viewModel.onIconStyleChange(IconStyle.EmojiHighContrast) }
-                    )
+                SettingsTab.Debug -> {
+                    Text("Debug", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenWeatherDebug() }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Weather debug tools",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Icon(
+                            imageVector = DagsbalkenIcons.Settings,
+                            contentDescription = null
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private enum class SettingsTab(val title: String) {
+    TimeWeatherAndLocation("Tid, väder & plats"),
+    SchoolAndChildren("Skola/barn"),
+    Debug("Debug")
 }
 
 @Composable
