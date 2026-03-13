@@ -40,14 +40,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -130,6 +133,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 import kotlin.math.roundToInt
 
 // -------- HUVUDAKTIVITET --------
@@ -228,6 +232,7 @@ fun LinearClockScreen(
     val timerTemplates by timerRepository.timerTemplatesFlow.collectAsState(initial = emptyList())
 
     var showQuickTimerDialog by remember { mutableStateOf(false) }
+    var showCustomBlockDialog by remember { mutableStateOf(false) }
 
     // Visibility Settings
     val showClock by viewModel.showClockFlow.collectAsState(initial = true)
@@ -309,11 +314,11 @@ fun LinearClockScreen(
     val today = remember(currentEpochDay) { LocalDate.ofEpochDay(currentEpochDay) }
 
     // --- Prepare Items ---
-    val todaysTimers = remember(activeTimers, today) {
+    val todaysBlocks = remember(activeTimers, today) {
         activeTimers.mapNotNull { timer ->
             when {
                 timer.date == today -> timer
-                timer.date == today.minusDays(1) && timer.endTime < timer.startTime -> {
+                timer.type == BlockType.TIMER && timer.date == today.minusDays(1) && timer.endTime < timer.startTime -> {
                     timer.copy(startTime = LocalTime.MIDNIGHT, date = today)
                 }
                 else -> null
@@ -330,8 +335,8 @@ fun LinearClockScreen(
         symbolSchedule.symbolPlacementsFor(today, schoolModeEnabled)
     }
 
-    val allItems = remember(calendarEvents, todaysTimers) {
-        val convertedEvents = calendarEvents.map {
+    val allItems = remember(calendarEvents, todaysBlocks, showEvents) {
+        val convertedEvents = if (showEvents) calendarEvents.map {
             CustomBlock(
                 id = it.id,
                 title = it.title,
@@ -341,8 +346,10 @@ fun LinearClockScreen(
                 type = BlockType.EVENT,
                 color = it.color
             )
+        } else {
+            emptyList()
         }
-        (convertedEvents + todaysTimers).sortedBy { it.startTime }.map { UiCustomBlock(it) }
+        (convertedEvents + todaysBlocks).sortedBy { it.startTime }.map { UiCustomBlock(it) }
     }
 
     val calendarUiItems = remember(allItems) { allItems.filter { it.block.type == BlockType.EVENT } }
@@ -364,6 +371,12 @@ fun LinearClockScreen(
 
     // Stable lambda for deletion
     val onDeleteTimerLambda: (String) -> Unit = remember(scope, timerRepository) {
+        { id: String ->
+            scope.launch { timerRepository.removeActiveTimer(id) }
+            Unit
+        }
+    }
+    val onDeleteCustomBlockLambda: (String) -> Unit = remember(scope, timerRepository) {
         { id: String ->
             scope.launch { timerRepository.removeActiveTimer(id) }
             Unit
@@ -474,6 +487,27 @@ fun LinearClockScreen(
         )
     }
 
+    if (showCustomBlockDialog) {
+        CustomTimelineBlockDialog(
+            onDismiss = { showCustomBlockDialog = false },
+            onSave = { title, startTime, endTime ->
+                val block = CustomBlock(
+                    id = "custom_event_${UUID.randomUUID()}",
+                    title = title,
+                    startTime = startTime,
+                    endTime = endTime,
+                    date = LocalDate.now(),
+                    type = BlockType.EVENT,
+                    color = themeOption.timelineDayColor.toArgb()
+                )
+                scope.launch {
+                    timerRepository.addActiveTimer(block)
+                }
+                showCustomBlockDialog = false
+            }
+        )
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -525,7 +559,9 @@ fun LinearClockScreen(
                         val intent = Intent(Intent.ACTION_INSERT)
                             .setData(CalendarContract.Events.CONTENT_URI)
                         context.startActivity(intent)
-                    }
+                    },
+                    onAddCustomBlockClick = { showCustomBlockDialog = true },
+                    onDeleteCustomBlock = onDeleteCustomBlockLambda
                 )
                 Spacer(Modifier.height(16.dp))
             }
@@ -845,7 +881,9 @@ fun LinearDayCard(
 fun CalendarSection(
     items: List<UiCustomBlock>,
     now: LocalTime,
-    onAddEventClick: () -> Unit
+    onAddEventClick: () -> Unit,
+    onAddCustomBlockClick: () -> Unit,
+    onDeleteCustomBlock: (String) -> Unit
 ) {
     val upcomingItems = remember(items, now) {
         items.filter {
@@ -861,24 +899,96 @@ fun CalendarSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Kalender", style = MaterialTheme.typography.titleMedium)
-            if (upcomingItems.isNotEmpty()) {
-                IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Add, "Lägg till händelse")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = onAddCustomBlockClick, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Add, "Lägg till eget block")
+                }
+                if (upcomingItems.isNotEmpty()) {
+                    IconButton(onClick = onAddEventClick, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Add, "Lägg till händelse")
+                    }
                 }
             }
         }
 
         if (upcomingItems.isEmpty()) {
-            EmptyStateCard(text = "Inget planerat", onClick = onAddEventClick)
+            EmptyStateCard(text = "Inget planerat", onClick = onAddCustomBlockClick)
         } else {
             upcomingItems.forEach { item ->
                 key(item.block.id) {
-                    EventListItem(item = item, onDelete = null)
+                    val isCustomEvent = item.block.id.startsWith("custom_event_")
+                    EventListItem(
+                        item = item,
+                        onDelete = if (isCustomEvent) {
+                            { onDeleteCustomBlock(item.block.id) }
+                        } else {
+                            null
+                        }
+                    )
                 }
             }
         }
     }
 }
+
+
+@Composable
+fun CustomTimelineBlockDialog(
+    onDismiss: () -> Unit,
+    onSave: (title: String, startTime: LocalTime, endTime: LocalTime) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var start by remember { mutableStateOf("09:00") }
+    var end by remember { mutableStateOf("10:00") }
+
+    val startTime = remember(start) { start.toLocalTimeOrNull() }
+    val endTime = remember(end) { end.toLocalTimeOrNull() }
+    val isValid = title.isNotBlank() && startTime != null && endTime != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Lägg till eget tidsblock") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Titel") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = start,
+                    onValueChange = { start = it },
+                    label = { Text("Start (HH:mm)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = end,
+                    onValueChange = { end = it },
+                    label = { Text("Slut (HH:mm)") },
+                    singleLine = true,
+                    supportingText = {
+                        if (!isValid) {
+                            Text("Ange giltig titel och tid, t.ex. 13:30")
+                        }
+                    }
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Avbryt") }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(title.trim(), startTime!!, endTime!!) },
+                enabled = isValid
+            ) { Text("Spara") }
+        }
+    )
+}
+
+private fun String.toLocalTimeOrNull(): LocalTime? =
+    runCatching { LocalTime.parse(this.trim(), DateTimeFormatter.ofPattern("H:mm")) }.getOrNull()
 
 @Composable
 fun TimerTimelineSection(
