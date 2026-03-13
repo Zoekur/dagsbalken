@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,6 +75,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -127,6 +130,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import kotlin.math.roundToInt
 
 // -------- HUVUDAKTIVITET --------
 class MainActivity : ComponentActivity() {
@@ -626,6 +630,27 @@ fun LinearDayCard(
     val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val nowColor = MaterialTheme.colorScheme.error
+    var zoomCenterMinute by rememberSaveable { mutableStateOf<Int?>(null) }
+    val isZoomed = zoomCenterMinute != null
+    val visibleWindowMinutes = 6 * 60
+
+    val visibleRange = remember(zoomCenterMinute) {
+        val center = zoomCenterMinute
+        if (center == null) {
+            0 to (24 * 60)
+        } else {
+            val halfWindow = visibleWindowMinutes / 2
+            var start = (center - halfWindow).coerceAtLeast(0)
+            var end = start + visibleWindowMinutes
+            if (end > 24 * 60) {
+                end = 24 * 60
+                start = (end - visibleWindowMinutes).coerceAtLeast(0)
+            }
+            start to end
+        }
+    }
+    val visibleStartMinute = visibleRange.first
+    val visibleEndMinute = visibleRange.second
 
     Box(
         Modifier
@@ -641,6 +666,9 @@ fun LinearDayCard(
         val currentSymbolsState = rememberUpdatedState(symbolSchedule)
         val currentPlacementsState = rememberUpdatedState(symbolPlacements)
         val currentIconStyleState = rememberUpdatedState<IconStyle>(iconStyle)
+        val currentVisibleStartState = rememberUpdatedState(visibleStartMinute)
+        val currentVisibleEndState = rememberUpdatedState(visibleEndMinute)
+        val currentIsZoomedState = rememberUpdatedState(isZoomed)
 
         val drawModifier = remember(themeOption, tickColor, majorTickColor, nowColor) {
             Modifier.drawWithCache {
@@ -655,7 +683,12 @@ fun LinearDayCard(
                     startX = 0f,
                     endX = width
                 )
-                val pxPerMin = width / (24 * 60)
+                val hourTextPaint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    color = android.graphics.Color.WHITE
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    textSize = heightPx * 0.11f
+                }
 
                 onDrawBehind {
                     val currentNow = currentNowState.value
@@ -663,9 +696,15 @@ fun LinearDayCard(
                     val currentSchedule = currentSymbolsState.value
                     val currentPlacements = currentPlacementsState.value
                     val currentIconStyle = currentIconStyleState.value
+                    val visibleStart = currentVisibleStartState.value
+                    val visibleEnd = currentVisibleEndState.value
+                    val currentIsZoomed = currentIsZoomedState.value
+                    val visibleDuration = (visibleEnd - visibleStart).coerceAtLeast(1)
+                    val pxPerMin = width / visibleDuration
+                    fun minuteToX(minute: Float): Float = (minute - visibleStart) * pxPerMin
 
                     val currentMinutes = currentNow.hour * 60 + currentNow.minute
-                    val currentX = currentMinutes * pxPerMin
+                    val currentX = minuteToX(currentMinutes.toFloat())
 
                     // 1. Gradient Background
                     drawRect(
@@ -686,8 +725,12 @@ fun LinearDayCard(
                             24 * 60
                         }
 
-                        val eventStartPx = startMin * pxPerMin
-                        val eventWidthPx = (actualEndMin - startMin) * pxPerMin
+                        val eventStartMin = kotlin.math.max(startMin, visibleStart)
+                        val eventEndMin = kotlin.math.min(actualEndMin, visibleEnd)
+                        if (eventEndMin <= eventStartMin) return@forEach
+
+                        val eventStartPx = minuteToX(eventStartMin.toFloat())
+                        val eventWidthPx = (eventEndMin - eventStartMin) * pxPerMin
 
                         val color = item.color?.let { Color(it) } ?: Color.Gray
 
@@ -700,11 +743,15 @@ fun LinearDayCard(
                     }
 
                     // 3. Ticks
-                    for (h in 0 until 24) {
-                        val min = h * 60
-                        val x = min * pxPerMin
+                    val firstHour = visibleStart / 60
+                    val lastHour = visibleEnd / 60
 
-                        val isMajor = h == 6 || h == 12 || h == 18
+                    for (h in firstHour..lastHour) {
+                        val min = h * 60
+                        val x = minuteToX(min.toFloat())
+                        if (x < 0f || x > width) continue
+
+                        val isMajor = h % 3 == 0
                         val tickHeight = if (isMajor) heightPx * 0.4f else heightPx * 0.2f
                         val tickStroke = if (isMajor) 4f else 2f
                         val color = if (isMajor) majorTickColor else tickColor
@@ -719,6 +766,15 @@ fun LinearDayCard(
                             strokeWidth = tickStroke,
                             cap = StrokeCap.Round
                         )
+
+                        if (currentIsZoomed) {
+                            drawContext.canvas.nativeCanvas.drawText(
+                                h.toString().padStart(2, '0'),
+                                x,
+                                heightPx * 0.92f,
+                                hourTextPaint
+                            )
+                        }
                     }
 
                     // 4. Nu-markör
@@ -736,7 +792,7 @@ fun LinearDayCard(
                             val symbol = currentSchedule.symbols.firstOrNull { it.id == placement.symbolId }
                             if (symbol != null) {
                                 val midMin = (placement.timeRange.startMinutes + placement.timeRange.endMinutes) / 2f
-                                val x = midMin * pxPerMin
+                                val x = minuteToX(midMin)
                                 if (x < 0f || x > width) return@forEach
 
                                 val glyph = glyphForIcon(symbol.iconKey, currentIconStyle)
@@ -765,6 +821,21 @@ fun LinearDayCard(
             modifier = Modifier
                 .fillMaxSize()
                 .then(drawModifier)
+                .pointerInput(visibleStartMinute, visibleEndMinute) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            if (size.width <= 0) return@detectTapGestures
+                            val fraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
+                            val tappedMinutes = (visibleStartMinute +
+                                ((visibleEndMinute - visibleStartMinute) * fraction)).roundToInt()
+                                .coerceIn(0, 24 * 60)
+                            zoomCenterMinute = tappedMinutes
+                        },
+                        onLongPress = {
+                            zoomCenterMinute = null
+                        }
+                    )
+                }
         )
     }
 }
