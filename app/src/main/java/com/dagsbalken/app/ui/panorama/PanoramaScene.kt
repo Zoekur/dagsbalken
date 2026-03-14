@@ -19,20 +19,58 @@ val DagsbalkenPanoramaScene = PanoramaScene(
     aspectRatio = PanoramaAspectRatio,
     layers = listOf(
         PanoramaLayer(
+            assetPath = PanoramaAssetPrefix + "sky.svg",
+            parallaxFactor = 0f,
+            alpha = 1f,
+            stretchX = 1f
+        ),
+        PanoramaLayer(
+            assetPath = PanoramaAssetPrefix + "stars.svg",
+            parallaxFactor = 0.01f,
+            alpha = 0.92f,
+            stretchX = 1f
+        ),
+        PanoramaLayer(
+            assetPath = PanoramaAssetPrefix + "celestial.svg",
+            parallaxFactor = 0.03f,
+            alpha = 1f,
+            stretchX = 1f
+        ),
+        PanoramaLayer(
+            assetPath = PanoramaAssetPrefix + "clouds_back.svg",
+            parallaxFactor = 0.08f,
+            alpha = 0.82f,
+            stretchX = 1.08f
+        ),
+        PanoramaLayer(
             assetPath = PanoramaAssetPrefix + "mountains_far.svg",
             parallaxFactor = 0.18f,
-            stretchX = 1.55f
+            alpha = 1f,
+            stretchX = 1.22f
         ),
         PanoramaLayer(
             assetPath = PanoramaAssetPrefix + "mountains_mid.svg",
             parallaxFactor = 0.30f,
-            stretchX = 1.38f
+            alpha = 1f,
+            stretchX = 1.16f
+        ),
+        PanoramaLayer(
+            assetPath = PanoramaAssetPrefix + "clouds_front.svg",
+            parallaxFactor = 0.42f,
+            alpha = 0.96f,
+            stretchX = 1.10f
+        ),
+        PanoramaLayer(
+            assetPath = PanoramaAssetPrefix + "forest.svg",
+            parallaxFactor = 0.62f,
+            alpha = 1f,
+            stretchX = 1.10f
         ),
         PanoramaLayer(
             assetPath = PanoramaAssetPrefix + "foreground.svg",
-            parallaxFactor = 1.00f,
-            stretchX = 1.22f
+            parallaxFactor = 1f,
+            alpha = 1f,
+            stretchX = 1.06f
         )
     )
 )
-

@@ -56,7 +56,7 @@ fun PanoramaTimelineBackground(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val sceneWidthDp = remember(maxWidth, maxHeight, scene.aspectRatio, zoomProgress, style) {
-            val widthFillFactor = if (maxWidth > maxHeight) 1.9f else 1.42f
+            val widthFillFactor = if (maxWidth > maxHeight) 2.0f else 1.75f
             val zoomScale = when (style) {
                 PanoramaStyle.Storybook -> 1f + (zoomProgress * 0.16f)
                 PanoramaStyle.Nordic -> 1f + (zoomProgress * 0.14f)
@@ -251,7 +251,7 @@ fun PanoramaTimelineBackground(
                 imageLoader = imageLoader,
                 contentDescription = null,
                 alignment = Alignment.BottomStart,
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.FillHeight,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxHeight()
@@ -297,9 +297,15 @@ private data class PanoramaAtmosphere(
     val duskBand: Color
 ) {
     fun layerAlphaMultiplier(layerName: String): Float = when (layerName) {
-        "mountains_far.svg" -> 0.84f + daylight * 0.16f
-        "mountains_mid.svg" -> 0.9f + daylight * 0.1f
-        "foreground.svg" -> 0.94f + daylight * 0.06f
+        "sky.svg" -> 1f
+        "stars.svg" -> 0.15f + (night * 0.95f)
+        "celestial.svg" -> 0.45f + (night * 0.55f)
+        "clouds_back.svg" -> 0.70f + (daylight * 0.18f)
+        "clouds_front.svg" -> 0.78f + (daylight * 0.16f)
+        "mountains_far.svg" -> 0.84f + (daylight * 0.16f)
+        "mountains_mid.svg" -> 0.90f + (daylight * 0.10f)
+        "forest.svg" -> 0.92f + (daylight * 0.08f)
+        "foreground.svg" -> 0.94f + (daylight * 0.06f)
         else -> 1f
     }
 }

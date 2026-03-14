@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="512" viewBox="0 0 4096 512" fill="none">
+
+<defs>
+  <linearGradient id="groundGrad" x1="0" y1="0" x2="4096" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#3F6A48"/>
+    <stop offset="18%" stop-color="#83A95B"/>
+    <stop offset="46%" stop-color="#91B65D"/>
+    <stop offset="72%" stop-color="#A48A55"/>
+    <stop offset="88%" stop-color="#5A4A57"/>
+    <stop offset="100%" stop-color="#253449"/>
+  </linearGradient>
+  <linearGradient id="pathGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#D5BE8C" stop-opacity="0.75"/>
+    <stop offset="100%" stop-color="#B88A55" stop-opacity="0.2"/>
+  </linearGradient>
+</defs>
+<path d="M0 390 C 420 360, 640 360, 1040 390 S 1780 430, 2290 396 S 3120 338, 4096 388 L 4096 512 L 0 512 Z" fill="url(#groundGrad)"/>
+<path d="M430 510 C 560 430, 760 414, 1010 432 C 1290 454, 1500 470, 1830 438 C 2220 400, 2630 400, 2890 430 C 3160 460, 3500 470, 3700 460" stroke="url(#pathGrad)" stroke-width="50" stroke-linecap="round" fill="none" opacity="0.8"/>
+
+<g id="bushes" opacity="0.92">
+  <ellipse cx="240" cy="418" rx="90" ry="40" fill="#537548"/>
+  <ellipse cx="320" cy="425" rx="58" ry="28" fill="#425F39"/>
+  <ellipse cx="1250" cy="430" rx="100" ry="42" fill="#5E8149"/>
+  <ellipse cx="1320" cy="434" rx="60" ry="26" fill="#4A693A"/>
+  <ellipse cx="2320" cy="424" rx="95" ry="40" fill="#68834C"/>
+  <ellipse cx="2400" cy="430" rx="56" ry="25" fill="#51613D"/>
+  <ellipse cx="3360" cy="420" rx="88" ry="38" fill="#5D6A57"/>
+  <ellipse cx="3440" cy="430" rx="52" ry="22" fill="#40414C"/>
+</g>
+
+<g id="grass" opacity="0.7">
+  <path d="M120 446 l8 -20 l8 20 M158 448 l5 -18 l6 18 M930 448 l7 -16 l7 16 M1380 458 l6 -18 l6 18 M2490 448 l8 -20 l7 20 M3650 452 l7 -19 l6 19" stroke="#D4E4A1" stroke-width="2" stroke-linecap="round"/>
+</g>
+</svg>

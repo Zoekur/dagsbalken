@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="512" viewBox="0 0 4096 512" fill="none">
+
+<defs>
+  <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#FFF7B2" stop-opacity="1"/>
+    <stop offset="55%" stop-color="#FFD76A" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#FFD76A" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+    <stop offset="100%" stop-color="#DCEBFF" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+
+<!-- sunrise sun -->
+<g id="sunrise">
+  <circle cx="520" cy="165" r="72" fill="url(#sunGlow)"/>
+  <circle cx="520" cy="165" r="42" fill="#FFE682"/>
+</g>
+
+<!-- midday sun -->
+<g id="midday">
+  <circle cx="1770" cy="92" r="60" fill="url(#sunGlow)"/>
+  <circle cx="1770" cy="92" r="34" fill="#FFF1A0"/>
+</g>
+
+<!-- sunset sun -->
+<g id="sunset">
+  <circle cx="3150" cy="215" r="74" fill="url(#sunGlow)"/>
+  <circle cx="3150" cy="215" r="43" fill="#FFD46B"/>
+</g>
+
+<!-- moon -->
+<g id="moon">
+  <circle cx="350" cy="98" r="56" fill="url(#moonGlow)"/>
+  <circle cx="350" cy="98" r="27" fill="#F7FAFF"/>
+  <circle cx="337" cy="90" r="5" fill="#D6DFEE"/>
+  <circle cx="362" cy="108" r="4" fill="#D6DFEE"/>
+  <circle cx="349" cy="116" r="3" fill="#D6DFEE"/>
+</g>
+</svg>
