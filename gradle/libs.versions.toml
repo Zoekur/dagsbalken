@@ -16,6 +16,7 @@ accompanist = "0.36.0"
 wearCompose = "1.4.0"
 wearWatchface = "1.2.1"
 serialization = "1.7.3"
+coil = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +49,8 @@ androidx-wear-watchface-data = { group = "androidx.wear.watchface", name = "watc
 androidx-wear-watchface-style = { group = "androidx.wear.watchface", name = "watchface-style", version.ref = "wearWatchface" }
 androidx-wear-watchface-editor = { group = "androidx.wear.watchface", name = "watchface-editor", version.ref = "wearWatchface" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
