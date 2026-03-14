@@ -78,6 +78,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.svg)
 
     // Accompanist (för System UI Controller)
     implementation(libs.accompanist.systemuicontroller)

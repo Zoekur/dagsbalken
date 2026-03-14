@@ -57,6 +57,7 @@ import com.dagsbalken.app.BuildConfig
 import com.dagsbalken.app.ui.MainViewModel
 import com.dagsbalken.app.ui.components.ColorPicker
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
+import com.dagsbalken.app.ui.panorama.PanoramaStyle
 import com.dagsbalken.app.ui.theme.ThemeOption
 import com.dagsbalken.app.ui.theme.ThemeSelector
 import com.dagsbalken.core.data.WeatherLocationSettings
@@ -91,6 +92,8 @@ fun SettingsScreen(
     val showTimers = viewModel?.showTimersFlow?.collectAsState(initial = true)
     val showWeather = viewModel?.showWeatherFlow?.collectAsState(initial = true)
     val showClothing = viewModel?.showClothingFlow?.collectAsState(initial = true)
+    val usePanoramaTimeline = viewModel?.usePanoramaTimelineFlow?.collectAsState(initial = true)
+    val panoramaStyle = viewModel?.panoramaStyleFlow?.collectAsState(initial = PanoramaStyle.Nordic)
 
     // AOD Settings
     val aodColor = viewModel?.aodColorFlow?.collectAsState(initial = -65536) // Default Red
@@ -179,6 +182,25 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         SettingsToggle("Tidslinje", showClock?.value ?: true) { viewModel.setShowClock(it) }
+                        SettingsToggle(
+                            "Panorama-bakgrund i tidslinjen",
+                            usePanoramaTimeline?.value ?: true
+                        ) { viewModel.setUsePanoramaTimeline(it) }
+                        if (usePanoramaTimeline?.value ?: true) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Panoramastil", style = MaterialTheme.typography.titleSmall)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Column(Modifier.padding(horizontal = 16.dp)) {
+                                PanoramaStyle.entries.forEach { style ->
+                                    PanoramaStyleOptionRow(
+                                        style = style,
+                                        selected = panoramaStyle?.value == style,
+                                        onClick = { viewModel.setPanoramaStyle(style) }
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                         SettingsToggle("Kalender (Events)", showEvents?.value ?: true) { viewModel.setShowEvents(it) }
                         SettingsToggle("Timers", showTimers?.value ?: true) { viewModel.setShowTimers(it) }
                         SettingsToggle("Väderkort", showWeather?.value ?: true) { viewModel.setShowWeather(it) }
@@ -508,6 +530,38 @@ private enum class SettingsTab(val title: String) {
     TimeWeatherAndLocation("Tid, väder & plats"),
     SchoolAndChildren("Skola/barn"),
     Debug("Debug")
+}
+
+@Composable
+private fun PanoramaStyleOptionRow(
+    style: PanoramaStyle,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(style.label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                style.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (selected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
 }
 
 @Composable

@@ -13,10 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,16 +71,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +103,8 @@ import com.dagsbalken.app.ui.UiCustomBlock
 import com.dagsbalken.app.ui.dagskompisen.WeatherAssistantCard
 import com.dagsbalken.app.ui.debug.DebugWeatherScreen
 import com.dagsbalken.app.ui.icons.DagsbalkenIcons
+import com.dagsbalken.app.ui.panorama.PanoramaStyle
+import com.dagsbalken.app.ui.panorama.PanoramaTimelineBackground
 import com.dagsbalken.app.ui.settings.AppPreferences
 import com.dagsbalken.app.ui.settings.ScheduleSettingsScreen
 import com.dagsbalken.app.ui.settings.SettingsScreen
@@ -222,6 +225,11 @@ fun LinearClockScreen(
     onThemeOptionChange: (ThemeOption) -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+        configuration.screenWidthDp > configuration.screenHeightDp
+    }
+    val contentHorizontalPadding = 16.dp
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val weatherRepository = remember { WeatherRepository(context) }
@@ -243,6 +251,14 @@ fun LinearClockScreen(
     val showTimers by viewModel.showTimersFlow.collectAsState(initial = true)
     val showWeather by viewModel.showWeatherFlow.collectAsState(initial = true)
     val showClothing by viewModel.showClothingFlow.collectAsState(initial = true)
+    val usePanoramaTimeline by viewModel.usePanoramaTimelineFlow.collectAsState(initial = true)
+    val panoramaStyle by viewModel.panoramaStyleFlow.collectAsState(initial = PanoramaStyle.Nordic)
+    val timelineHorizontalPadding = if (isLandscape && usePanoramaTimeline) 0.dp else contentHorizontalPadding
+    val timelineHeight = when {
+        !usePanoramaTimeline -> 168.dp
+        isLandscape -> 208.dp
+        else -> 228.dp
+    }
 
     // Funktion för att ladda events
     fun loadEvents() {
@@ -514,7 +530,7 @@ fun LinearClockScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 8.dp)
+            .padding(top = 40.dp, bottom = 8.dp)
     ) {
         Column(
             modifier = Modifier
@@ -528,6 +544,7 @@ fun LinearClockScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = contentHorizontalPadding)
                     .padding(bottom = 16.dp)
             ) {
                 Text(
@@ -542,10 +559,14 @@ fun LinearClockScreen(
             if (showClock) {
                 val unwrappedItems = remember(allItems) { allItems.map { it.block } }
                 LinearDayCard(
+                    modifier = Modifier.padding(horizontal = timelineHorizontalPadding),
                     now = now.toLocalTime(),
-                    height = 168.dp,
+                    height = timelineHeight,
                     items = unwrappedItems,
                     themeOption = themeOption,
+                    usePanoramaBackground = usePanoramaTimeline,
+                    isLandscape = isLandscape,
+                    panoramaStyle = panoramaStyle,
                     symbolPlacements = todayPlacements,
                     symbolSchedule = symbolSchedule,
                     iconStyle = iconStyle
@@ -553,80 +574,83 @@ fun LinearClockScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            // 2. Events Section
-            if (showEvents) {
-                CalendarSection(
-                    items = calendarUiItems,
-                    now = now.toLocalTime(),
-                    onAddEventClick = {
-                        val intent = Intent(Intent.ACTION_INSERT)
-                            .setData(CalendarContract.Events.CONTENT_URI)
-                        context.startActivity(intent)
-                    },
-                    onAddCustomBlockClick = { showCustomBlockDialog = true },
-                    onDeleteCustomBlock = onDeleteCustomBlockLambda
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-
-            // 3. Timers Section
-            if (showTimers) {
-                TimerTimelineSection(
-                    now = now.toLocalTime(),
-                    timers = timerUiItems,
-                    themeOption = themeOption,
-                    onStartTimerClick = onStartTimer,
-                    onDeleteTimer = onDeleteTimerLambda
-                )
-                Spacer(Modifier.height(24.dp))
-            }
-
-            // 4. Väder- och Klädrådsrutor
-            if (showWeather || showClothing) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    if (showWeather) {
-                        val onRefreshWeather = remember(scope, weatherRepository, context) {
-                            {
-                                scope.launch {
-                                    val success = weatherRepository.fetchAndSaveWeatherOnce()
-                                    Toast.makeText(
-                                        context,
-                                        if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                                Unit
-                            }
-                        }
-                        WeatherInfoCard(
-                            modifier = Modifier.weight(1f),
-                            data = weatherData,
-                            onRefresh = onRefreshWeather
-                        )
-                    } else if (showClothing) {
-                         // Filler to keep clothing card ratio if weather is hidden but clothing shown
-                         Spacer(Modifier.weight(1f))
-                    }
-
-                    if (showClothing) {
-                        ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
-                    } else if (showWeather) {
-                        // Filler to keep weather card ratio if clothing is hidden
-                        Spacer(Modifier.weight(1f))
-                    }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = contentHorizontalPadding)
+            ) {
+                // 2. Events Section
+                if (showEvents) {
+                    CalendarSection(
+                        items = calendarUiItems,
+                        now = now.toLocalTime(),
+                        onAddEventClick = {
+                            val intent = Intent(Intent.ACTION_INSERT)
+                                .setData(CalendarContract.Events.CONTENT_URI)
+                            context.startActivity(intent)
+                        },
+                        onAddCustomBlockClick = { showCustomBlockDialog = true },
+                        onDeleteCustomBlock = onDeleteCustomBlockLambda
+                    )
+                    Spacer(Modifier.height(16.dp))
                 }
-                Spacer(Modifier.height(16.dp))
-            }
 
-            // Version info
-            Text(
-                text = "v${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray.copy(alpha = 0.5f)
-            )
+                // 3. Timers Section
+                if (showTimers) {
+                    TimerTimelineSection(
+                        now = now.toLocalTime(),
+                        timers = timerUiItems,
+                        themeOption = themeOption,
+                        onStartTimerClick = onStartTimer,
+                        onDeleteTimer = onDeleteTimerLambda
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
+
+                // 4. Väder- och Klädrådsrutor
+                if (showWeather || showClothing) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (showWeather) {
+                            val onRefreshWeather = remember(scope, weatherRepository, context) {
+                                {
+                                    scope.launch {
+                                        val success = weatherRepository.fetchAndSaveWeatherOnce()
+                                        Toast.makeText(
+                                            context,
+                                            if (success) "Uppdaterat väder" else "Uppdatering misslyckades",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                    Unit
+                                }
+                            }
+                            WeatherInfoCard(
+                                modifier = Modifier.weight(1f),
+                                data = weatherData,
+                                onRefresh = onRefreshWeather
+                            )
+                        } else if (showClothing) {
+                             Spacer(Modifier.weight(1f))
+                        }
+
+                        if (showClothing) {
+                            ClothingAdviceCard(modifier = Modifier.weight(1f), data = weatherData)
+                        } else if (showWeather) {
+                            Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                Text(
+                    text = "v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray.copy(alpha = 0.5f)
+                )
+            }
         }
 
         // Settings Icon
@@ -653,21 +677,59 @@ fun LinearClockScreen(
 
 @Composable
 fun LinearDayCard(
+    modifier: Modifier = Modifier,
     now: LocalTime,
     height: Dp = 160.dp,
     items: List<CustomBlock> = emptyList(),
     themeOption: ThemeOption,
+    usePanoramaBackground: Boolean = true,
+    isLandscape: Boolean = false,
+    panoramaStyle: PanoramaStyle = PanoramaStyle.Nordic,
     symbolPlacements: List<DailySymbolPlacement> = emptyList(),
     symbolSchedule: TimelineSymbolSchedule? = null,
     iconStyle: IconStyle
 ) {
-    val cornerRadiusDp = 28.dp
+    val cornerRadiusDp = if (usePanoramaBackground && isLandscape) 14.dp else 28.dp
+    val cardElevation = if (usePanoramaBackground && isLandscape) 4.dp else 8.dp
     val nightColor = themeOption.timelineNightColor
     val dayColor = themeOption.timelineDayColor
+    val panoramaTickColor = when (panoramaStyle) {
+        PanoramaStyle.Storybook -> Color(0xFFFBE7C2).copy(alpha = 0.62f)
+        PanoramaStyle.Nordic -> Color.White.copy(alpha = 0.5f)
+        PanoramaStyle.Arcade -> Color(0xFFB7F7FF).copy(alpha = 0.72f)
+    }
+    val panoramaMajorTickColor = when (panoramaStyle) {
+        PanoramaStyle.Storybook -> Color(0xFFFFF6E2).copy(alpha = 0.94f)
+        PanoramaStyle.Nordic -> Color.White.copy(alpha = 0.82f)
+        PanoramaStyle.Arcade -> Color(0xFFEAFBFF).copy(alpha = 0.98f)
+    }
+    val panoramaScrimColor = when (panoramaStyle) {
+        PanoramaStyle.Storybook -> Color(0xFF24121A).copy(alpha = 0.04f)
+        PanoramaStyle.Nordic -> Color.Black.copy(alpha = 0.055f)
+        PanoramaStyle.Arcade -> Color(0xFF071523).copy(alpha = 0.075f)
+    }
+    val panoramaElapsedColor = when (panoramaStyle) {
+        PanoramaStyle.Storybook -> Color(0xFFFFE1A8).copy(alpha = 0.045f)
+        PanoramaStyle.Nordic -> Color.White.copy(alpha = 0.03f)
+        PanoramaStyle.Arcade -> Color(0xFF55E9FF).copy(alpha = 0.055f)
+    }
+    val panoramaGradientAlpha = when (panoramaStyle) {
+        PanoramaStyle.Storybook -> 0.12f
+        PanoramaStyle.Nordic -> 0.08f
+        PanoramaStyle.Arcade -> 0.14f
+    }
 
     // Theme colors
-    val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    val majorTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+    val tickColor = if (usePanoramaBackground) {
+        panoramaTickColor
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+    }
+    val majorTickColor = if (usePanoramaBackground) {
+        panoramaMajorTickColor
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+    }
     val nowColor = MaterialTheme.colorScheme.error
     var zoomCenterMinute by rememberSaveable { mutableStateOf<Int?>(null) }
     var timelineWidthPx by remember { mutableStateOf(0f) }
@@ -691,24 +753,48 @@ fun LinearDayCard(
     }
     val visibleStartMinute = visibleRange.first
     val visibleEndMinute = visibleRange.second
-    val dragState = rememberDraggableState { delta ->
-        if (!isZoomed || timelineWidthPx <= 0f) return@rememberDraggableState
+    val visibleDurationMinutes = visibleEndMinute - visibleStartMinute
+    val viewportCenterMinute = remember(visibleStartMinute, visibleEndMinute) {
+        ((visibleStartMinute + visibleEndMinute) / 2f).roundToInt()
+    }
+    val focusLaneFraction = when (panoramaStyle) {
+        PanoramaStyle.Storybook -> 0.67f
+        PanoramaStyle.Nordic -> 0.7f
+        PanoramaStyle.Arcade -> 0.66f
+    }
+
+    fun panZoomWindow(delta: Float) {
+        if (!isZoomed || timelineWidthPx <= 0f) return
 
         val visibleDuration = (visibleEndMinute - visibleStartMinute).coerceAtLeast(1)
         val draggedMinutes = (delta / timelineWidthPx) * visibleDuration
-        val currentCenter = zoomCenterMinute ?: return@rememberDraggableState
+        val currentCenter = zoomCenterMinute ?: return
 
         zoomCenterMinute = (currentCenter - draggedMinutes.roundToInt())
             .coerceIn(0, 24 * 60)
     }
 
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(height)
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(cornerRadiusDp))
+            .shadow(elevation = cardElevation, shape = RoundedCornerShape(cornerRadiusDp))
+            .clip(RoundedCornerShape(cornerRadiusDp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(cornerRadiusDp))
     ) {
+        if (usePanoramaBackground) {
+            PanoramaTimelineBackground(
+                viewportCenterMinute = viewportCenterMinute,
+                visibleStartMinute = visibleStartMinute,
+                visibleEndMinute = visibleEndMinute,
+                visibleDurationMinutes = visibleDurationMinutes,
+                isZoomed = isZoomed,
+                style = panoramaStyle,
+                focusLaneFraction = focusLaneFraction,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
         // Optimization: Use rememberUpdatedState to read dynamic values inside drawing phase
         // This prevents the drawWithCache builder from re-running (and re-allocating Brush) every minute
         val currentNowState = rememberUpdatedState(now)
@@ -752,16 +838,64 @@ fun LinearDayCard(
                     val visibleDuration = (visibleEnd - visibleStart).coerceAtLeast(1)
                     val pxPerMin = width / visibleDuration
                     fun minuteToX(minute: Float): Float = (minute - visibleStart) * pxPerMin
+                    fun laneYAt(x: Float): Float {
+                        if (!usePanoramaBackground || width <= 0f) return heightPx * focusLaneFraction
+                        val fraction = (x / width).coerceIn(0f, 1f)
+                        val centerLift = -heightPx * 0.055f * (1f - kotlin.math.abs((fraction - 0.5f) / 0.5f))
+                        val sway = when {
+                            fraction < 0.35f -> heightPx * 0.045f * ((0.35f - fraction) / 0.35f)
+                            fraction > 0.68f -> heightPx * 0.035f * ((fraction - 0.68f) / 0.32f)
+                            else -> -heightPx * 0.018f * ((fraction - 0.35f) / 0.33f)
+                        }
+                        return (heightPx * focusLaneFraction + centerLift + sway)
+                            .coerceIn(heightPx * 0.42f, heightPx * 0.86f)
+                    }
 
                     val currentMinutes = currentNow.hour * 60 + currentNow.minute
                     val currentX = minuteToX(currentMinutes.toFloat())
 
-                    // 1. Gradient Background
-                    drawRect(
-                        brush = gradientBrush,
-                        topLeft = Offset.Zero,
-                        size = Size(currentX.coerceIn(0f, width), heightPx)
-                    )
+                    // 1. Bakgrund
+                    if (usePanoramaBackground) {
+                        val elapsedWidth = currentX.coerceIn(0f, width)
+                        val focusLaneY = heightPx * focusLaneFraction
+                        drawRect(
+                            color = panoramaScrimColor,
+                            topLeft = Offset.Zero,
+                            size = Size(width, heightPx)
+                        )
+                        drawRect(
+                            brush = gradientBrush,
+                            alpha = panoramaGradientAlpha,
+                            topLeft = Offset.Zero,
+                            size = Size(width, heightPx)
+                        )
+                        drawRect(
+                            color = panoramaElapsedColor,
+                            topLeft = Offset.Zero,
+                            size = Size(elapsedWidth, heightPx)
+                        )
+                        drawLine(
+                            color = Color.White.copy(alpha = when (panoramaStyle) {
+                                PanoramaStyle.Storybook -> 0.1f
+                                PanoramaStyle.Nordic -> 0.08f
+                                PanoramaStyle.Arcade -> 0.14f
+                            }),
+                            start = Offset(0f, focusLaneY),
+                            end = Offset(width, focusLaneY),
+                            strokeWidth = when (panoramaStyle) {
+                                PanoramaStyle.Storybook -> 4f
+                                PanoramaStyle.Nordic -> 3f
+                                PanoramaStyle.Arcade -> 5f
+                            },
+                            cap = StrokeCap.Round
+                        )
+                    } else {
+                        drawRect(
+                            brush = gradientBrush,
+                            topLeft = Offset.Zero,
+                            size = Size(currentX.coerceIn(0f, width), heightPx)
+                        )
+                    }
 
                     // 2. Rita events/timers
                     currentItems.forEach { item ->
@@ -784,12 +918,99 @@ fun LinearDayCard(
 
                         val color = item.color?.let { Color(it) } ?: Color.Gray
 
-                        drawRect(
-                            color = color,
-                            alpha = 0.3f,
-                            topLeft = Offset(eventStartPx, 0f),
-                            size = Size(eventWidthPx, heightPx)
-                        )
+                        if (usePanoramaBackground) {
+                            val isTimer = item.type == BlockType.TIMER
+                            val blockMidX = eventStartPx + (eventWidthPx / 2f)
+                            val laneY = laneYAt(blockMidX)
+                            val blockHeight = when (panoramaStyle) {
+                                PanoramaStyle.Storybook -> if (isTimer) heightPx * 0.16f else heightPx * 0.23f
+                                PanoramaStyle.Nordic -> if (isTimer) heightPx * 0.14f else heightPx * 0.2f
+                                PanoramaStyle.Arcade -> if (isTimer) heightPx * 0.15f else heightPx * 0.18f
+                            }
+                            val blockTop = if (isTimer) {
+                                laneY + (heightPx * 0.035f)
+                            } else {
+                                laneY - blockHeight - (heightPx * 0.035f)
+                            }
+                            val blockWidth = eventWidthPx.coerceAtLeast(blockHeight)
+                            val cornerRadius = CornerRadius(blockHeight / 2f, blockHeight / 2f)
+                            val fillAlpha = when (panoramaStyle) {
+                                PanoramaStyle.Storybook -> if (isTimer) 0.82f else 0.7f
+                                PanoramaStyle.Nordic -> if (isTimer) 0.88f else 0.72f
+                                PanoramaStyle.Arcade -> if (isTimer) 0.9f else 0.8f
+                            }
+                            val outlineColor = when (panoramaStyle) {
+                                PanoramaStyle.Storybook -> Color(0xFFFFF2D6).copy(alpha = if (isTimer) 0.58f else 0.42f)
+                                PanoramaStyle.Nordic -> Color.White.copy(alpha = if (isTimer) 0.52f else 0.34f)
+                                PanoramaStyle.Arcade -> Color(0xFFB8FAFF).copy(alpha = if (isTimer) 0.76f else 0.58f)
+                            }
+                            val outlineWidth = when (panoramaStyle) {
+                                PanoramaStyle.Arcade -> if (isTimer) 4f else 3f
+                                else -> if (isTimer) 3f else 2f
+                            }
+                            val anchorRadius = if (isTimer) heightPx * 0.018f else heightPx * 0.022f
+                            val landmarkColor = when (panoramaStyle) {
+                                PanoramaStyle.Storybook -> if (isTimer) Color(0xFFF0E3C0) else Color(0xFFFFE1B0)
+                                PanoramaStyle.Nordic -> if (isTimer) Color(0xFFD8E5EE) else Color.White
+                                PanoramaStyle.Arcade -> if (isTimer) Color(0xFF8BF5FF) else Color(0xFFFFE16E)
+                            }
+                            val stemTopY = if (isTimer) blockTop else blockTop + blockHeight
+
+                            drawLine(
+                                color = landmarkColor.copy(alpha = if (isTimer) 0.45f else 0.36f),
+                                start = Offset(blockMidX, laneY),
+                                end = Offset(blockMidX, stemTopY),
+                                strokeWidth = if (isTimer) 3f else 2f,
+                                cap = StrokeCap.Round
+                            )
+                            drawCircle(
+                                color = landmarkColor.copy(alpha = 0.18f),
+                                radius = anchorRadius * 2.3f,
+                                center = Offset(blockMidX, laneY)
+                            )
+                            drawCircle(
+                                color = landmarkColor.copy(alpha = 0.9f),
+                                radius = anchorRadius,
+                                center = Offset(blockMidX, laneY)
+                            )
+                            if (isTimer) {
+                                drawLine(
+                                    color = landmarkColor.copy(alpha = 0.4f),
+                                    start = Offset(blockMidX - anchorRadius * 1.8f, laneY + anchorRadius * 2.2f),
+                                    end = Offset(blockMidX + anchorRadius * 1.8f, laneY + anchorRadius * 2.2f),
+                                    strokeWidth = 2f,
+                                    cap = StrokeCap.Round
+                                )
+                            } else {
+                                drawRoundRect(
+                                    color = landmarkColor.copy(alpha = 0.22f),
+                                    topLeft = Offset(blockMidX - anchorRadius * 1.5f, laneY - anchorRadius * 3.8f),
+                                    size = Size(anchorRadius * 3f, anchorRadius * 2.4f),
+                                    cornerRadius = CornerRadius(anchorRadius, anchorRadius)
+                                )
+                            }
+
+                            drawRoundRect(
+                                color = color.copy(alpha = fillAlpha),
+                                topLeft = Offset(eventStartPx, blockTop),
+                                size = Size(blockWidth, blockHeight),
+                                cornerRadius = cornerRadius
+                            )
+                            drawRoundRect(
+                                color = outlineColor,
+                                topLeft = Offset(eventStartPx, blockTop),
+                                size = Size(blockWidth, blockHeight),
+                                cornerRadius = cornerRadius,
+                                style = Stroke(width = outlineWidth)
+                            )
+                        } else {
+                            drawRect(
+                                color = color,
+                                alpha = 0.3f,
+                                topLeft = Offset(eventStartPx, 0f),
+                                size = Size(eventWidthPx, heightPx)
+                            )
+                        }
                     }
 
                     // 3. Ticks
@@ -844,6 +1065,31 @@ fun LinearDayCard(
                                 val midMin = (placement.timeRange.startMinutes + placement.timeRange.endMinutes) / 2f
                                 val x = minuteToX(midMin)
                                 if (x < 0f || x > width) return@forEach
+                                val laneY = laneYAt(x)
+                                val symbolY = laneY - heightPx * 0.13f
+                                val symbolGlow = when (panoramaStyle) {
+                                    PanoramaStyle.Storybook -> Color(0xFFFFE8A7)
+                                    PanoramaStyle.Nordic -> Color.White
+                                    PanoramaStyle.Arcade -> Color(0xFF89F8FF)
+                                }
+
+                                drawLine(
+                                    color = symbolGlow.copy(alpha = 0.34f),
+                                    start = Offset(x, laneY),
+                                    end = Offset(x, symbolY + heightPx * 0.02f),
+                                    strokeWidth = 2f,
+                                    cap = StrokeCap.Round
+                                )
+                                drawCircle(
+                                    color = symbolGlow.copy(alpha = 0.2f),
+                                    radius = heightPx * 0.035f,
+                                    center = Offset(x, laneY)
+                                )
+                                drawCircle(
+                                    color = symbolGlow.copy(alpha = 0.88f),
+                                    radius = heightPx * 0.012f,
+                                    center = Offset(x, laneY)
+                                )
 
                                 val glyph = glyphForIcon(symbol.iconKey, currentIconStyle)
                                 drawContext.canvas.nativeCanvas.apply {
@@ -856,7 +1102,7 @@ fun LinearDayCard(
                                     drawText(
                                         glyph,
                                         x,
-                                        heightPx * 0.3f,
+                                        symbolY,
                                         textPaint
                                     )
                                 }
@@ -872,12 +1118,14 @@ fun LinearDayCard(
                 .fillMaxSize()
                 .onSizeChanged { timelineWidthPx = it.width.toFloat() }
                 .then(drawModifier)
-                .draggable(
-                    state = dragState,
-                    orientation = Orientation.Horizontal,
-                    enabled = isZoomed
-                )
-                .pointerInput(visibleStartMinute, visibleEndMinute) {
+                .pointerInput(isZoomed, visibleStartMinute, visibleEndMinute, timelineWidthPx) {
+                    detectHorizontalDragGestures { change, dragAmount ->
+                        if (!isZoomed || timelineWidthPx <= 0f) return@detectHorizontalDragGestures
+                        change.consume()
+                        panZoomWindow(dragAmount)
+                    }
+                }
+                .pointerInput(visibleStartMinute, visibleEndMinute, isZoomed) {
                     detectTapGestures(
                         onTap = { offset ->
                             if (size.width <= 0) return@detectTapGestures

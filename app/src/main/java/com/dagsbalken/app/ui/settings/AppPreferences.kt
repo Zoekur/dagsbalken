@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.dagsbalken.app.ui.panorama.PanoramaStyle
 import com.dagsbalken.core.schedule.IconStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,6 +25,7 @@ class AppPreferences(context: Context) {
         val SHOW_TIMERS = booleanPreferencesKey("show_timers")
         val SHOW_WEATHER = booleanPreferencesKey("show_weather")
         val SHOW_CLOTHING = booleanPreferencesKey("show_clothing")
+        val USE_PANORAMA_TIMELINE = booleanPreferencesKey("use_panorama_timeline")
 
         // AOD Settings
         val AOD_COLOR = intPreferencesKey("aod_color")
@@ -33,6 +35,7 @@ class AppPreferences(context: Context) {
 
     private object Keys {
         val ICON_STYLE = stringPreferencesKey("timeline_icon_style")
+        val PANORAMA_STYLE = stringPreferencesKey("panorama_style")
     }
 
     val showClock: Flow<Boolean> = appContext.appSettingsDataStore.data
@@ -49,6 +52,12 @@ class AppPreferences(context: Context) {
 
     val showClothing: Flow<Boolean> = appContext.appSettingsDataStore.data
         .map { prefs -> prefs[SHOW_CLOTHING] ?: true }
+
+    val usePanoramaTimeline: Flow<Boolean> = appContext.appSettingsDataStore.data
+        .map { prefs -> prefs[USE_PANORAMA_TIMELINE] ?: true }
+
+    val panoramaStyleFlow: Flow<PanoramaStyle> = appContext.appSettingsDataStore.data
+        .map { prefs -> PanoramaStyle.fromStorageValue(prefs[Keys.PANORAMA_STYLE]) }
 
     val aodColor: Flow<Int> = appContext.appSettingsDataStore.data
         .map { prefs -> prefs[AOD_COLOR] ?: -65536 } // Default Red (0xFFFF0000 -> -65536 in signed Int)
@@ -87,6 +96,16 @@ class AppPreferences(context: Context) {
 
     suspend fun setShowClothing(show: Boolean) {
         appContext.appSettingsDataStore.edit { it[SHOW_CLOTHING] = show }
+    }
+
+    suspend fun setUsePanoramaTimeline(enabled: Boolean) {
+        appContext.appSettingsDataStore.edit { it[USE_PANORAMA_TIMELINE] = enabled }
+    }
+
+    suspend fun setPanoramaStyle(style: PanoramaStyle) {
+        appContext.appSettingsDataStore.edit { prefs ->
+            prefs[Keys.PANORAMA_STYLE] = style.storageValue
+        }
     }
 
     suspend fun setAodColor(color: Int) {
