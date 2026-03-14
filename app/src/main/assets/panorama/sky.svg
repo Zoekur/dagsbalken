@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="512" viewBox="0 0 4096 512" fill="none">
+
+<defs>
+  <linearGradient id="skyGrad" x1="0" y1="0" x2="4096" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#142B6F"/>
+    <stop offset="12%" stop-color="#F08B57"/>
+    <stop offset="28%" stop-color="#8ED3FF"/>
+    <stop offset="52%" stop-color="#B6E4FF"/>
+    <stop offset="72%" stop-color="#F5B07B"/>
+    <stop offset="88%" stop-color="#5B4FAE"/>
+    <stop offset="100%" stop-color="#0D163C"/>
+  </linearGradient>
+  <linearGradient id="hazeGrad" x1="0" y1="300" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#FFF4D0" stop-opacity="0.0"/>
+    <stop offset="100%" stop-color="#F7E5B6" stop-opacity="0.28"/>
+  </linearGradient>
+</defs>
+<rect width="4096" height="512" fill="url(#skyGrad)"/>
+<rect y="250" width="4096" height="262" fill="url(#hazeGrad)"/>
+</svg>
