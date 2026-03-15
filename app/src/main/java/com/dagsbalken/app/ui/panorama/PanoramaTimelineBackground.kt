@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
@@ -288,6 +289,7 @@ fun PanoramaTimelineBackground(
                     .fillMaxHeight()
                     .width(layerWidthDp)
                     .graphicsLayer {
+                        transformOrigin = TransformOrigin(0f, 1f)
                         this.translationX = translationX
                         this.translationY = translationY
                         scaleX = layerScale
