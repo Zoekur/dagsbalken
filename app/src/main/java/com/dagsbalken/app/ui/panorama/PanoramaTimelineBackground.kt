@@ -20,6 +20,10 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
@@ -35,9 +39,9 @@ fun PanoramaTimelineBackground(
     visibleEndMinute: Int,
     visibleDurationMinutes: Int,
     isZoomed: Boolean,
+    modifier: Modifier = Modifier,
     style: PanoramaStyle = PanoramaStyle.Nordic,
     focusLaneFraction: Float = 0.7f,
-    modifier: Modifier = Modifier,
     scene: PanoramaScene = DagsbalkenPanoramaScene
 ) {
     val context = LocalContext.current
@@ -49,9 +53,21 @@ fun PanoramaTimelineBackground(
     val viewportProgress = (viewportCenterMinute.coerceIn(0, 24 * 60) / (24f * 60f)).coerceIn(0f, 1f)
     val atmosphere = remember(viewportProgress, style) { panoramaAtmosphereFor(viewportProgress, style) }
     val styleProfile = remember(style) { panoramaStyleProfile(style) }
-    val zoomProgress = remember(visibleDurationMinutes, isZoomed) {
-        if (!isZoomed) 0f else ((24 * 60 - visibleDurationMinutes.coerceIn(6 * 60, 24 * 60)).toFloat() / (18 * 60f)).coerceIn(0f, 1f)
+    val targetZoomProgress = remember(visibleDurationMinutes, isZoomed) {
+        if (!isZoomed) 0f
+        else ((24 * 60 - visibleDurationMinutes.coerceIn(6 * 60, 24 * 60)).toFloat() / (18 * 60f))
+            .coerceIn(0f, 1f)
     }
+
+    val zoomProgress by animateFloatAsState(
+        targetValue = targetZoomProgress,
+        animationSpec = tween(
+            durationMillis = 450,
+            easing = FastOutSlowInEasing
+        ),
+        label = "panorama_zoom_progress"
+    )
+
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -65,19 +81,12 @@ fun PanoramaTimelineBackground(
             }
 
             val baseWidth = maxHeight * scene.aspectRatio
+            val orientationBoost = if (isLandscape) 1.02f else 1.18f
 
-            // viktigast: portrait behöver mer värld än man tror
-            val orientationBoost = if (isLandscape) 1.08f else 1.55f
-
-            // om du har stretchX på lagren måste världen ta höjd för det
-            val maxStretchX = scene.layers.maxOfOrNull { it.stretchX } ?: 1f
-
-            baseWidth * zoomScale * orientationBoost * maxStretchX
+            baseWidth * zoomScale * orientationBoost
         }
+
         val viewportWidthPx = with(density) { maxWidth.toPx() }
-        val sceneWidthPx = with(density) { sceneWidthDp.toPx() }
-        val availableParallaxPx = (sceneWidthPx - viewportWidthPx).coerceAtLeast(0f)
-        val centeredOffsetPx = -availableParallaxPx / 2f
         val sceneHeightPx = with(density) { maxHeight.toPx() }
 
         Spacer(
@@ -235,16 +244,28 @@ fun PanoramaTimelineBackground(
                 "mountains_mid.svg" -> 1.12f + zoomProgress * 0.05f
                 else -> 1.08f + zoomProgress * 0.04f
             }
-            val layerScaleX = layerScale * layer.stretchX
-            val renderedWidthPx = sceneWidthPx * layerScaleX
-            val rawTranslationX = centeredOffsetPx -
-                ((viewportProgress - 0.5f) * availableParallaxPx * layer.parallaxFactor * parallaxMultiplier)
+
+// bredda lagret med stretchX via riktig layoutbredd, inte bara scaleX
+            val layerWidthDp = sceneWidthDp * layer.stretchX
+            val layerWidthPx = with(density) { layerWidthDp.toPx() }
+
+// bara zoom ska ligga i scaleX/scaleY
+            val renderedWidthPx = layerWidthPx * layerScale
+
+            val layerAvailableParallaxPx = (renderedWidthPx - viewportWidthPx).coerceAtLeast(0f)
+            val layerCenteredOffsetPx = -layerAvailableParallaxPx / 2f
+
+            val rawTranslationX = layerCenteredOffsetPx -
+                    ((viewportProgress - 0.5f) * layerAvailableParallaxPx * layer.parallaxFactor * parallaxMultiplier)
+
             val minTranslationX = (viewportWidthPx - renderedWidthPx).coerceAtMost(0f)
+
             val translationX = if (renderedWidthPx <= viewportWidthPx) {
                 (viewportWidthPx - renderedWidthPx) / 2f
             } else {
                 rawTranslationX.coerceIn(minTranslationX, 0f)
             }
+
             val translationY = sceneHeightPx * when (layerName) {
                 "mountains_far.svg" -> -0.015f
                 "mountains_mid.svg" -> 0f
@@ -265,11 +286,11 @@ fun PanoramaTimelineBackground(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxHeight()
-                    .width(sceneWidthDp)
+                    .width(layerWidthDp)
                     .graphicsLayer {
                         this.translationX = translationX
                         this.translationY = translationY
-                        scaleX = layerScaleX
+                        scaleX = layerScale
                         scaleY = layerScale
                         alpha = layerAlpha
                     }
