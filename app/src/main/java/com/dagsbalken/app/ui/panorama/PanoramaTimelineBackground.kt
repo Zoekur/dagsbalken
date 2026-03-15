@@ -56,13 +56,16 @@ fun PanoramaTimelineBackground(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val sceneWidthDp = remember(maxWidth, maxHeight, scene.aspectRatio, zoomProgress, style) {
-            val widthFillFactor = if (maxWidth > maxHeight) 2.0f else 1.75f
             val zoomScale = when (style) {
                 PanoramaStyle.Storybook -> 1f + (zoomProgress * 0.16f)
                 PanoramaStyle.Nordic -> 1f + (zoomProgress * 0.14f)
                 PanoramaStyle.Arcade -> 1f + (zoomProgress * 0.18f)
             }
-            maxOf(maxWidth * (widthFillFactor + zoomProgress * 0.08f), maxHeight * scene.aspectRatio * zoomScale)
+
+            val baseWidth = maxHeight * scene.aspectRatio
+            val portraitBoost = if (maxWidth > maxHeight) 1f else 1.18f
+
+            baseWidth * zoomScale * portraitBoost
         }
         val viewportWidthPx = with(density) { maxWidth.toPx() }
         val sceneWidthPx = with(density) { sceneWidthDp.toPx() }
