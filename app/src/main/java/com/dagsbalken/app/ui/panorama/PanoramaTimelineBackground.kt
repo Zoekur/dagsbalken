@@ -56,6 +56,8 @@ fun PanoramaTimelineBackground(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val sceneWidthDp = remember(maxWidth, maxHeight, scene.aspectRatio, zoomProgress, style) {
+            val isLandscape = maxWidth > maxHeight
+
             val zoomScale = when (style) {
                 PanoramaStyle.Storybook -> 1f + (zoomProgress * 0.16f)
                 PanoramaStyle.Nordic -> 1f + (zoomProgress * 0.14f)
@@ -63,9 +65,14 @@ fun PanoramaTimelineBackground(
             }
 
             val baseWidth = maxHeight * scene.aspectRatio
-            val portraitBoost = if (maxWidth > maxHeight) 1f else 1.18f
 
-            baseWidth * zoomScale * portraitBoost
+            // viktigast: portrait behöver mer värld än man tror
+            val orientationBoost = if (isLandscape) 1.08f else 1.55f
+
+            // om du har stretchX på lagren måste världen ta höjd för det
+            val maxStretchX = scene.layers.maxOfOrNull { it.stretchX } ?: 1f
+
+            baseWidth * zoomScale * orientationBoost * maxStretchX
         }
         val viewportWidthPx = with(density) { maxWidth.toPx() }
         val sceneWidthPx = with(density) { sceneWidthDp.toPx() }
