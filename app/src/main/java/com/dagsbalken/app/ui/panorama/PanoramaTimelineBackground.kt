@@ -26,6 +26,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
@@ -258,49 +259,79 @@ fun PanoramaTimelineBackground(
 
         scene.layers.forEach { layer ->
             val layerName = layer.assetPath.substringAfterLast('/')
+
             val parallaxMultiplier = when (layerName) {
-                "foreground.svg" -> 1.14f * styleProfile.parallaxBoost
-                "mountains_mid.svg" -> 1.05f * styleProfile.parallaxBoost
+                "foreground.svg" -> 1.10f * styleProfile.parallaxBoost
+                "mountains_mid.svg" -> 1.03f * styleProfile.parallaxBoost
                 else -> 1f
             }
+
             val layerScale = when (layerName) {
-                "foreground.svg" -> 1.22f + zoomProgress * 0.32f
-                "mountains_mid.svg" -> 1.16f + zoomProgress * 0.24f
-                "mountains_far.svg" -> 1.1f + zoomProgress * 0.16f
-                else -> 1.06f + zoomProgress * 0.18f
+                "foreground.svg" -> 1.30f + zoomProgress * 0.22f
+                "mountains_mid.svg" -> 1.18f + zoomProgress * 0.16f
+                "clouds_front.svg" -> 1.10f + zoomProgress * 0.10f
+                else -> 1.06f + zoomProgress * 0.08f
             }
 
-            val layerWidthPx = with(density) {
-                val baseWorldWidthPx = (sceneWidthDp * layer.stretchX).toPx()
-                val maxZoomViewportWidthPx = viewportWidthPx * layer.maxZoomViewportCoverage
-                val parallaxCoveragePx = maxZoomViewportWidthPx * parallaxCoverageMultiplier(layer.parallaxFactor)
-                maxOf(baseWorldWidthPx, parallaxCoveragePx) + layer.seamSafetyPx * 2f
-            }
-            val layerWidthDp = with(density) { layerWidthPx.toDp() }
+            // Mer overscan för övre/fjärrlager så de inte tar slut i maxzoom.
+            val coverageBoost = when (layerName) {
+                "sky.svg",
+                "stars.svg",
+                "celestial.svg",
+                "clouds_back.svg",
+                "clouds_front.svg",
+                "mountains_far.svg" -> 1.65f + (zoomProgress * 0.45f)
 
+                "mountains_mid.svg",
+                "forest.svg" -> 1.25f + (zoomProgress * 0.18f)
+
+                else -> 1.14f + (zoomProgress * 0.14f)
+            }
+
+            val layerWidthDp = (sceneWidthDp * layer.stretchX * coverageBoost) + 48.dp
+            val layerWidthPx = with(density) { layerWidthDp.toPx() }
+
+            // SVG:erna utgår nu från centrum, så vi tänker symmetrisk pan kring mitten.
             val renderedWidthPx = layerWidthPx * layerScale
+            val panRangePx = ((renderedWidthPx - viewportWidthPx) / 2f).coerceAtLeast(0f)
 
-            val layerAvailableParallaxPx = (renderedWidthPx - viewportWidthPx).coerceAtLeast(0f)
-            val layerCenteredOffsetPx = -layerAvailableParallaxPx / 2f
+            val rawTranslationX =
+                -((viewportProgress - 0.5f) * 2f * panRangePx * layer.parallaxFactor * parallaxMultiplier)
 
-            val rawTranslationX = layerCenteredOffsetPx -
-                    ((animatedViewportProgress - 0.5f) * layerAvailableParallaxPx * layer.parallaxFactor * parallaxMultiplier)
-
-            val minTranslationX = (viewportWidthPx - renderedWidthPx).coerceAtMost(0f)
-
-            val translationX = if (renderedWidthPx <= viewportWidthPx) {
-                (viewportWidthPx - renderedWidthPx) / 2f
-            } else {
-                rawTranslationX.coerceIn(minTranslationX, 0f)
-            }
+            val translationX = rawTranslationX.coerceIn(-panRangePx, panRangePx)
 
             val translationY = sceneHeightPx * when (layerName) {
-                "mountains_far.svg" -> -0.015f
+                "sky.svg" -> -0.01f
+                "stars.svg" -> -0.01f
+                "celestial.svg" -> -0.005f
+                "clouds_back.svg" -> -0.01f
+                "clouds_front.svg" -> -0.005f
+                "mountains_far.svg" -> -0.01f
                 "mountains_mid.svg" -> 0f
-                "foreground.svg" -> 0.03f
+                "foreground.svg" -> 0.025f
                 else -> 0f
             }
-            val layerAlpha = (layer.alpha * atmosphere.layerAlphaMultiplier(layerName) * layerDetailAlphaBoost(lodLevel, layerName)).coerceIn(0f, 1f)
+
+            val layerAlpha = when (lodLevel) {
+                LodLevel.FAR -> (layer.alpha * atmosphere.layerAlphaMultiplier(layerName)).coerceIn(0f, 1f)
+                LodLevel.MID -> (layer.alpha * atmosphere.layerAlphaMultiplier(layerName)).coerceIn(0f, 1f)
+                LodLevel.NEAR -> {
+                    val lodBoost = when (layerName) {
+                        "foreground.svg", "clouds_front.svg", "mountains_mid.svg" -> 1f
+                        else -> 0.96f
+                    }
+                    (layer.alpha * atmosphere.layerAlphaMultiplier(layerName) * lodBoost).coerceIn(0f, 1f)
+                }
+                LodLevel.DETAIL -> {
+                    val lodBoost = when (layerName) {
+                        "foreground.svg" -> 1f
+                        "mountains_mid.svg" -> 0.98f
+                        "clouds_front.svg" -> 0.96f
+                        else -> 0.92f
+                    }
+                    (layer.alpha * atmosphere.layerAlphaMultiplier(layerName) * lodBoost).coerceIn(0f, 1f)
+                }
+            }
 
             AsyncImage(
                 model = ImageRequest.Builder(context)
@@ -309,14 +340,13 @@ fun PanoramaTimelineBackground(
                     .build(),
                 imageLoader = imageLoader,
                 contentDescription = null,
-                alignment = Alignment.BottomStart,
+                alignment = Alignment.BottomCenter,
                 contentScale = ContentScale.FillHeight,
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.BottomCenter)
                     .fillMaxHeight()
                     .width(layerWidthDp)
                     .graphicsLayer {
-                        transformOrigin = TransformOrigin(0f, 1f)
                         this.translationX = translationX
                         this.translationY = translationY
                         scaleX = layerScale
