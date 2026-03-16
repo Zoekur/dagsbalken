@@ -33,6 +33,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -734,19 +737,19 @@ fun LinearDayCard(
     var zoomCenterMinute by rememberSaveable { mutableStateOf<Int?>(null) }
     var timelineWidthPx by remember { mutableStateOf(0f) }
     val isZoomed = zoomCenterMinute != null
-    val visibleWindowMinutes = 6 * 60
+    val minVisibleWindowMinutes = 2 * 60
 
     val visibleRange = remember(zoomCenterMinute) {
         val center = zoomCenterMinute
         if (center == null) {
             0 to (24 * 60)
         } else {
-            val halfWindow = visibleWindowMinutes / 2
+            val halfWindow = minVisibleWindowMinutes / 2
             var start = (center - halfWindow).coerceAtLeast(0)
-            var end = start + visibleWindowMinutes
+            var end = start + minVisibleWindowMinutes
             if (end > 24 * 60) {
                 end = 24 * 60
-                start = (end - visibleWindowMinutes).coerceAtLeast(0)
+                start = (end - minVisibleWindowMinutes).coerceAtLeast(0)
             }
             start to end
         }
@@ -762,12 +765,23 @@ fun LinearDayCard(
         PanoramaStyle.Nordic -> 0.7f
         PanoramaStyle.Arcade -> 0.66f
     }
+    val animatedCenterMinute = remember { Animatable((zoomCenterMinute ?: viewportCenterMinute).toFloat()) }
+
+    LaunchedEffect(zoomCenterMinute, viewportCenterMinute) {
+        val target = (zoomCenterMinute ?: viewportCenterMinute).toFloat()
+        if (kotlin.math.abs(animatedCenterMinute.value - target) > 0.6f) {
+            animatedCenterMinute.animateTo(
+                targetValue = target,
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+            )
+        }
+    }
 
     fun panZoomWindow(delta: Float) {
         if (!isZoomed || timelineWidthPx <= 0f) return
 
         val visibleDuration = (visibleEndMinute - visibleStartMinute).coerceAtLeast(1)
-        val draggedMinutes = (delta / timelineWidthPx) * visibleDuration
+        val draggedMinutes = ((delta / timelineWidthPx) * visibleDuration * 0.85f)
         val currentCenter = zoomCenterMinute ?: return
 
         zoomCenterMinute = (currentCenter - draggedMinutes.roundToInt())
@@ -784,7 +798,7 @@ fun LinearDayCard(
     ) {
         if (usePanoramaBackground) {
             PanoramaTimelineBackground(
-                viewportCenterMinute = viewportCenterMinute,
+                viewportCenterMinute = animatedCenterMinute.value.roundToInt(),
                 visibleStartMinute = visibleStartMinute,
                 visibleEndMinute = visibleEndMinute,
                 visibleDurationMinutes = visibleDurationMinutes,
@@ -1134,6 +1148,9 @@ fun LinearDayCard(
                                 ((visibleEndMinute - visibleStartMinute) * fraction)).roundToInt()
                                 .coerceIn(0, 24 * 60)
                             zoomCenterMinute = tappedMinutes
+                        },
+                        onDoubleTap = {
+                            zoomCenterMinute = null
                         },
                         onLongPress = {
                             zoomCenterMinute = null

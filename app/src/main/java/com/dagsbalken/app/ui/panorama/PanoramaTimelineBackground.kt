@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import coil.ImageLoader
@@ -43,7 +44,8 @@ fun PanoramaTimelineBackground(
     modifier: Modifier = Modifier,
     style: PanoramaStyle = PanoramaStyle.Nordic,
     focusLaneFraction: Float = 0.7f,
-    scene: PanoramaScene = DagsbalkenPanoramaScene
+    scene: PanoramaScene = DagsbalkenPanoramaScene,
+    dayWorld: DayWorld = DayWorld.default()
 ) {
     val context = LocalContext.current
     val imageLoader = remember(context) {
@@ -51,23 +53,34 @@ fun PanoramaTimelineBackground(
             .components { add(SvgDecoder.Factory()) }
             .build()
     }
-    val viewportProgress = (viewportCenterMinute.coerceIn(0, 24 * 60) / (24f * 60f)).coerceIn(0f, 1f)
+    val cameraInput = remember(viewportCenterMinute, visibleDurationMinutes, isZoomed) {
+        cameraStateFor(
+            centerMinute = viewportCenterMinute.toFloat(),
+            visibleDurationMinutes = if (isZoomed) visibleDurationMinutes else 24 * 60
+        )
+    }
+    val viewportProgress = (cameraInput.centerMinute.coerceIn(0f, 24f * 60f) / (24f * 60f)).coerceIn(0f, 1f)
+    val activeZone = remember(dayWorld, cameraInput.centerMinute) {
+        dayWorld.zoneAt(cameraInput.centerMinute.toInt())
+    }
     val atmosphere = remember(viewportProgress, style) { panoramaAtmosphereFor(viewportProgress, style) }
     val styleProfile = remember(style) { panoramaStyleProfile(style) }
-    val targetZoomProgress = remember(visibleDurationMinutes, isZoomed) {
-        if (!isZoomed) 0f
-        else ((24 * 60 - visibleDurationMinutes.coerceIn(6 * 60, 24 * 60)).toFloat() / (18 * 60f))
-            .coerceIn(0f, 1f)
-    }
 
     val zoomProgress by animateFloatAsState(
-        targetValue = targetZoomProgress,
+        targetValue = cameraInput.zoom,
         animationSpec = tween(
-            durationMillis = 450,
+            durationMillis = 650,
             easing = FastOutSlowInEasing
         ),
         label = "panorama_zoom_progress"
     )
+    val animatedCenterMinute by animateIntAsState(
+        targetValue = cameraInput.centerMinute.toInt(),
+        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+        label = "panorama_camera_center"
+    )
+    val animatedViewportProgress = (animatedCenterMinute.coerceIn(0, 24 * 60) / (24f * 60f)).coerceIn(0f, 1f)
+    val lodLevel = remember(zoomProgress) { lodLevelForZoom(zoomProgress) }
 
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -76,13 +89,13 @@ fun PanoramaTimelineBackground(
             val isLandscape = maxWidth > maxHeight
 
             val zoomScale = when (style) {
-                PanoramaStyle.Storybook -> 1f + (zoomProgress * 0.16f)
-                PanoramaStyle.Nordic -> 1f + (zoomProgress * 0.14f)
-                PanoramaStyle.Arcade -> 1f + (zoomProgress * 0.18f)
+                PanoramaStyle.Storybook -> 1f + (zoomProgress * 0.7f)
+                PanoramaStyle.Nordic -> 1f + (zoomProgress * 0.78f)
+                PanoramaStyle.Arcade -> 1f + (zoomProgress * 0.86f)
             }
 
             val baseWidth = maxHeight * scene.aspectRatio
-            val orientationBoost = if (isLandscape) 1.02f else 1.18f
+            val orientationBoost = if (isLandscape) 1.14f else 1.34f
 
             baseWidth * zoomScale * orientationBoost
         }
@@ -204,7 +217,7 @@ fun PanoramaTimelineBackground(
                     )
                     val duskBrush = Brush.radialGradient(
                         colors = listOf(atmosphere.duskBand, Color.Transparent),
-                        center = Offset(size.width * viewportProgress, horizonY),
+                        center = Offset(size.width * animatedViewportProgress, horizonY),
                         radius = size.width * 0.32f
                     )
                     val focusBrush = Brush.radialGradient(
@@ -219,6 +232,15 @@ fun PanoramaTimelineBackground(
                         center = focusCenter,
                         radius = size.minDimension * (0.22f + zoomProgress * 0.04f)
                     )
+                    val zoneBrush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = if (activeZone?.scene?.detailsEnabled == true || lodLevel >= LodLevel.NEAR) 0.03f else 0.015f),
+                            Color.Transparent
+                        ),
+                        startX = size.width * ((activeZone?.startMinute ?: 0) / (24f * 60f)),
+                        endX = size.width * ((activeZone?.endMinute ?: 24 * 60) / (24f * 60f))
+                    )
 
                     onDrawBehind {
                         drawRect(brush = skyBrush, size = Size(size.width, size.height))
@@ -229,6 +251,7 @@ fun PanoramaTimelineBackground(
                         drawPath(path = midSilhouette, color = midSilhouetteColor)
                         drawPath(path = foregroundBase, brush = foregroundBaseBrush)
                         drawRect(brush = focusBrush, size = Size(size.width, size.height))
+                        drawRect(brush = zoneBrush, size = Size(size.width, size.height))
                     }
                 }
         )
@@ -241,23 +264,27 @@ fun PanoramaTimelineBackground(
                 else -> 1f
             }
             val layerScale = when (layerName) {
-                "foreground.svg" -> 1.18f + zoomProgress * 0.06f
-                "mountains_mid.svg" -> 1.12f + zoomProgress * 0.05f
-                else -> 1.08f + zoomProgress * 0.04f
+                "foreground.svg" -> 1.22f + zoomProgress * 0.32f
+                "mountains_mid.svg" -> 1.16f + zoomProgress * 0.24f
+                "mountains_far.svg" -> 1.1f + zoomProgress * 0.16f
+                else -> 1.06f + zoomProgress * 0.18f
             }
 
-// bredda lagret med stretchX via riktig layoutbredd, inte bara scaleX
-            val layerWidthDp = sceneWidthDp * layer.stretchX
-            val layerWidthPx = with(density) { layerWidthDp.toPx() }
+            val layerWidthPx = with(density) {
+                val baseWorldWidthPx = (sceneWidthDp * layer.stretchX).toPx()
+                val maxZoomViewportWidthPx = viewportWidthPx * layer.maxZoomViewportCoverage
+                val parallaxCoveragePx = maxZoomViewportWidthPx * parallaxCoverageMultiplier(layer.parallaxFactor)
+                maxOf(baseWorldWidthPx, parallaxCoveragePx) + layer.seamSafetyPx * 2f
+            }
+            val layerWidthDp = with(density) { layerWidthPx.toDp() }
 
-// bara zoom ska ligga i scaleX/scaleY
             val renderedWidthPx = layerWidthPx * layerScale
 
             val layerAvailableParallaxPx = (renderedWidthPx - viewportWidthPx).coerceAtLeast(0f)
             val layerCenteredOffsetPx = -layerAvailableParallaxPx / 2f
 
             val rawTranslationX = layerCenteredOffsetPx -
-                    ((viewportProgress - 0.5f) * layerAvailableParallaxPx * layer.parallaxFactor * parallaxMultiplier)
+                    ((animatedViewportProgress - 0.5f) * layerAvailableParallaxPx * layer.parallaxFactor * parallaxMultiplier)
 
             val minTranslationX = (viewportWidthPx - renderedWidthPx).coerceAtMost(0f)
 
@@ -273,7 +300,7 @@ fun PanoramaTimelineBackground(
                 "foreground.svg" -> 0.03f
                 else -> 0f
             }
-            val layerAlpha = (layer.alpha * atmosphere.layerAlphaMultiplier(layerName)).coerceIn(0f, 1f)
+            val layerAlpha = (layer.alpha * atmosphere.layerAlphaMultiplier(layerName) * layerDetailAlphaBoost(lodLevel, layerName)).coerceIn(0f, 1f)
 
             AsyncImage(
                 model = ImageRequest.Builder(context)
