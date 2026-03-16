@@ -6,6 +6,9 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.widget.Toast
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -737,8 +740,15 @@ fun LinearDayCard(
     var zoomCenterMinute by rememberSaveable { mutableStateOf<Int?>(null) }
     var timelineWidthPx by remember { mutableStateOf(0f) }
     val isZoomed = zoomCenterMinute != null
-    val minVisibleWindowMinutes = 2 * 60
-
+    val minVisibleWindowMinutes = 3*60
+    val animatedZoomCenter by animateFloatAsState(
+        targetValue = (zoomCenterMinute ?: 0).toFloat(),
+        animationSpec = tween(
+            durationMillis = 260,
+            easing = FastOutSlowInEasing
+        ),
+        label = "timeline_zoom_center"
+    )
     val visibleRange = remember(zoomCenterMinute) {
         val center = zoomCenterMinute
         if (center == null) {
@@ -781,7 +791,7 @@ fun LinearDayCard(
         if (!isZoomed || timelineWidthPx <= 0f) return
 
         val visibleDuration = (visibleEndMinute - visibleStartMinute).coerceAtLeast(1)
-        val draggedMinutes = ((delta / timelineWidthPx) * visibleDuration * 0.85f)
+        val draggedMinutes = ((delta / timelineWidthPx) * visibleDuration * 2.85f)
         val currentCenter = zoomCenterMinute ?: return
 
         zoomCenterMinute = (currentCenter - draggedMinutes.roundToInt())
@@ -1123,6 +1133,79 @@ fun LinearDayCard(
                             }
                         }
                     }
+
+                    // 6. Ministrip — smal tidslinje längst ner med färgade aktivitetsblock
+                    run {
+                        val stripHeight = 10f
+                        val blockH = 5f
+                        val stripTop = heightPx - stripHeight
+                        val lineY = stripTop + stripHeight / 2f
+
+                        // Bakgrundsrand — halvtransparent mörk linje
+                        drawLine(
+                            color = Color.Black.copy(alpha = 0.25f),
+                            start = Offset(0f, lineY),
+                            end = Offset(width, lineY),
+                            strokeWidth = 2f
+                        )
+
+                        // Tidstick varje hel timme — tunna vita streck
+                        val firstH = visibleStart / 60
+                        val lastH = visibleEnd / 60
+                        for (h in firstH..lastH) {
+                            val hx = minuteToX((h * 60).toFloat())
+                            if (hx < 0f || hx > width) continue
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.18f),
+                                start = Offset(hx, stripTop),
+                                end = Offset(hx, heightPx),
+                                strokeWidth = 1f
+                            )
+                        }
+
+                        // Samla och sortera block — längsta (i tid) ritas först (underst)
+                        data class MiniBlock(val startPx: Float, val widthPx: Float, val color: Color, val durationMin: Int)
+
+                        val miniBlocks = mutableListOf<MiniBlock>()
+                        currentItems.forEach { item ->
+                            val sMin = item.startTime.hour * 60 + item.startTime.minute
+                            val eMin = item.endTime.hour * 60 + item.endTime.minute
+                            val aEnd = if (eMin > sMin) eMin
+                                       else if (item.startTime == LocalTime.MIDNIGHT) eMin
+                                       else 24 * 60
+                            val clampedStart = kotlin.math.max(sMin, visibleStart)
+                            val clampedEnd = kotlin.math.min(aEnd, visibleEnd)
+                            if (clampedEnd <= clampedStart) return@forEach
+                            val sx = minuteToX(clampedStart.toFloat())
+                            val w = (clampedEnd - clampedStart) * pxPerMin
+                            val c = item.color?.let { Color(it) } ?: Color.Gray
+                            miniBlocks.add(MiniBlock(sx, w, c, aEnd - sMin))
+                        }
+
+                        // Längsta först → ritas underst, kortaste överst
+                        miniBlocks.sortByDescending { it.durationMin }
+
+                        miniBlocks.forEachIndexed { index, mb ->
+                            // Första lagret överlappar tidslinjen (top = stripTop + blockH/2)
+                            // Efterföljande staplas uppåt
+                            val yOffset = stripTop + (blockH / 2f) - (index * (blockH - 1f))
+                            drawRoundRect(
+                                color = mb.color.copy(alpha = 0.85f),
+                                topLeft = Offset(mb.startPx, yOffset.coerceAtMost(stripTop + blockH / 2f)),
+                                size = Size(mb.widthPx.coerceAtLeast(3f), blockH),
+                                cornerRadius = CornerRadius(blockH / 2f, blockH / 2f)
+                            )
+                        }
+
+                        // Nu-markör i ministripen
+                        if (currentX in 0f..width) {
+                            drawCircle(
+                                color = nowColor,
+                                radius = 3f,
+                                center = Offset(currentX, lineY)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1143,10 +1226,17 @@ fun LinearDayCard(
                     detectTapGestures(
                         onTap = { offset ->
                             if (size.width <= 0) return@detectTapGestures
+
+                            // Tap ska bara användas för att gå IN i zoom, inte för att panorera när man redan är inne.
+                            if (isZoomed) return@detectTapGestures
+
                             val fraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                            val tappedMinutes = (visibleStartMinute +
-                                ((visibleEndMinute - visibleStartMinute) * fraction)).roundToInt()
+                            val tappedMinutes = (
+                                    visibleStartMinute +
+                                            ((visibleEndMinute - visibleStartMinute) * fraction)
+                                    ).roundToInt()
                                 .coerceIn(0, 24 * 60)
+
                             zoomCenterMinute = tappedMinutes
                         },
                         onDoubleTap = {

@@ -4,13 +4,17 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class DayOfWeekKey {
-    MONDAY,
-    TUESDAY,
-    WEDNESDAY,
-    THURSDAY,
-    FRIDAY,
-    SATURDAY,
-    SUNDAY
+    MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
+}
+
+/**
+ * Representerar de tre nivåerna i Dagsbalken-visionen.
+ * Används av UI för att bestämma hur mycket detaljer som ska visas.
+ */
+enum class TimelineZoomLevel {
+    DAY,      // Nivå A: Översikt, stora former, landskap
+    HOUR,     // Nivå B: Timzon, varje timme är en plats (t.ex. "Hemma")
+    ACTIVITY  // Nivå C: Fokus, detaljer, konkret aktivitet
 }
 
 @Serializable
@@ -31,7 +35,12 @@ data class ScheduleSymbol(
     val label: String,
     val iconKey: String,
     val colorArgb: Int,
-    val isSchoolRelated: Boolean
+    val isSchoolRelated: Boolean,
+    /**
+     * Relevanta detaljer för Nivå C (Aktivitet).
+     * Blir synligt när man "flyger in" i aktiviteten.
+     */
+    val description: String = ""
 )
 
 @Serializable
@@ -39,7 +48,12 @@ data class DailySymbolPlacement(
     val symbolId: String,
     val dayOfWeek: DayOfWeekKey? = null,
     val timeRange: TimeRange,
-    val schoolModeOnly: Boolean = false
+    val schoolModeOnly: Boolean = false,
+    /**
+     * Etikett för Nivå B (Timzon).
+     * Gör varje timme till en egen plats (t.ex. 08 = "Hemma", 09 = "Resa").
+     */
+    val zoneLabel: String = ""
 )
 
 @Serializable
