@@ -89,17 +89,17 @@ Se `/docs` för en sammanhållen genomgång av:
 
 ## Utvecklaren
 
-Dagsbalken utvecklas av en student inom beteendevetenskap med inriktning mot IT-miljö, vid sidan av studier.
+Mitt intresse för teknik började tidigt, skrev min första HTML-kod redan som tioåring och fortsatte med gymnasiestudier inom IT-media och webdesign.
 
-Projektets utveckling har varit löst knuten till utbildningen, där kunskap från pågående kurser kontinuerligt appliceras i Dagsbalken som ett sätt att fördjupa och pröva teorier i praktiken.
+Min bakgrund sträcker sig från vård till IT. Som utbildad undersköterska och har jag arbetat totalt 14 år inom sjukvård och kommunal hemtjänst. I dessa miljöer blev det tydligt hur avgörande struktur, tydlighet och förutsägbarhet är i människors vardag, särskilt i situationer där kognitiv belastning redan är hög.
 
-Min bakgrund sträcker sig från vård till IT. Jag är utbildad undersköterska och har arbetat totalt 14 år inom sjukvård och kommunal hemtjänst. I dessa miljöer blev det tydligt hur avgörande struktur, tydlighet och förutsägbarhet är i människors vardag, särskilt i situationer där kognitiv belastning redan är hög.
-
-Genom mitt uppdrag som skyddsombud fördjupades ett systemperspektiv, där olika behov, regelverk och verkliga arbetssituationer behöver vägas mot varandra. Det innebar att förstå hur beslut och system påverkar människor i praktiken, inte bara i teorin.
+Som förtroendevald på arbetsplatsen och skyddsombud fördjupades ett systemperspektiv, där olika behov, regelverk och verkliga arbetssituationer behöver vägas mot varandra. Det innebar att förstå hur beslut och system påverkar människor i praktiken, inte bara i teorin. 
 
 Parallellt arbetade jag som digitaliseringshandledare i nära samarbete med IT-avdelning och digitaliseringsenhet, med fokus på att införa och anpassa digitala verktyg i verksamheten. Det innebar att översätta teknik till något som faktiskt fungerar i praktiken för både personal och brukare.
 
-Mitt intresse för teknik började tidigt. Jag läste IT-media med inriktning mot webbdesign och skrev min första HTML-kod redan som tioåring. Kombinationen av tekniskt intresse och erfarenhet från verksamheter där digitala lösningar möter verkliga behov har präglat hur jag närmar mig utveckling.
+Projektets utveckling har varit löst knuten till min nuvarande utbildning, där kunskap från pågående kurser kontinuerligt appliceras i Dagsbalken som ett sätt att fördjupa och pröva teorier i praktiken.
+
+Kombinationen av tekniskt intresse och erfarenhet från verksamheter där digitala lösningar möter verkliga behov har präglat hur jag närmar mig utveckling.
 
 Detta har format ett arbetssätt där jag utgår från hur system upplevs och används i praktiken, snarare än hur de är tänkta att fungera.
 
