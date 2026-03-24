@@ -1,21 +1,18 @@
 # Dagsbalken
-### Visualizing time as a cognitive and design problem
 
 ## Overview
 
 Dagsbalken is a digital service designed to make time more understandable in everyday life.
 
-The project explores how time can be represented visually and contextually, rather than as abstract numbers. It is particularly aimed at situations where time perception is challenging, such as for children or individuals with neurodivergent conditions.
+The project originates from a combination of lived experience, long-term work in care environments, and ongoing studies in behavioural science and IT. It focuses on situations where time is not naturally understood, but needs to be interpreted, negotiated, and managed in practice.
 
-Instead of focusing on clock time, Dagsbalken presents the day as a sequence of activities, helping users understand what is happening now, what comes next, and how time progresses.
+Rather than treating time as a neutral measurement, Dagsbalken explores how time is actually perceived and used in real contexts. It is particularly relevant in environments where predictability, transitions, and shared understanding are critical, such as in schools or care settings.
 
-The project is developed alongside studies in behavioural science and IT, and combines empirical observations, research, and hands-on prototyping.
+The system is developed as a modular platform, with separate products for home and school environments, built on a shared core for representing time as a visual and situational structure.
 
-Dagsbalken is motivated by the question:
+---
 
-> *What if time did not need to be calculated — but could simply be seen?*
-
-# Dagsbalken
+## Bakgrund
 
 Dagsbalken är en digital tjänst under utveckling med målet att göra tid begriplig i vardagen.
 
@@ -90,30 +87,29 @@ Se `/docs` för en sammanhållen genomgång av:
 
 ---
 
-## Syfte
+## Utvecklaren
 
-Dagsbalken är både ett utvecklingsprojekt och ett undersökande arbete kring hur tid kan representeras på ett mer användbart sätt.
+Dagsbalken utvecklas av en student inom beteendevetenskap med inriktning mot IT-miljö, vid sidan av studier.
 
-Ambitionen är att bidra till:
-- ökad självständighet  
-- minskad stress vid övergångar  
-- en mer gemensam förståelse av tid i vardagen  
-
----
-
-## Om utvecklaren
-
-Jag studerar beteendevetenskap med inriktning mot IT-miljö och utvecklar Dagsbalken vid sidan av mina studier.
+Projektets utveckling har varit löst knuten till utbildningen, där kunskap från pågående kurser kontinuerligt appliceras i Dagsbalken som ett sätt att fördjupa och pröva teorier i praktiken.
 
 Min bakgrund sträcker sig från vård till IT. Jag är utbildad undersköterska och har arbetat totalt 14 år inom sjukvård och kommunal hemtjänst. I dessa miljöer blev det tydligt hur avgörande struktur, tydlighet och förutsägbarhet är i människors vardag, särskilt i situationer där kognitiv belastning redan är hög.
 
-Genom mitt uppdrag som skyddsombud fick jag ytterligare fördjupa ett systemperspektiv, där olika behov, regelverk och verkliga arbetssituationer behöver vägas mot varandra. Det innebar att förstå hur beslut och system påverkar människor i praktiken, inte bara i teorin.
+Genom mitt uppdrag som skyddsombud fördjupades ett systemperspektiv, där olika behov, regelverk och verkliga arbetssituationer behöver vägas mot varandra. Det innebar att förstå hur beslut och system påverkar människor i praktiken, inte bara i teorin.
 
 Parallellt arbetade jag som digitaliseringshandledare i nära samarbete med IT-avdelning och digitaliseringsenhet, med fokus på att införa och anpassa digitala verktyg i verksamheten. Det innebar att översätta teknik till något som faktiskt fungerar i praktiken för både personal och brukare.
 
 Mitt intresse för teknik började tidigt. Jag läste IT-media med inriktning mot webbdesign och skrev min första HTML-kod redan som tioåring. Kombinationen av tekniskt intresse och erfarenhet från verksamheter där digitala lösningar möter verkliga behov har präglat hur jag närmar mig utveckling.
 
+Detta har format ett arbetssätt där jag utgår från hur system upplevs och används i praktiken, snarare än hur de är tänkta att fungera.
+
 Dagsbalken har vuxit fram i skärningspunkten mellan dessa erfarenheter. Projektet är både ett sätt att utveckla en konkret tjänst och att undersöka hur digitala system kan utformas för att bättre stödja hur människor faktiskt uppfattar och hanterar tid i vardagen.
 
-Projektet är under aktiv utveckling. Vid intresse eller frågor, ta gärna kontakt.
-Erik Strömberg
+---
+
+## Kontakt
+
+Projektet är under aktiv utveckling. Vid intresse, frågor eller samarbeten är du varmt välkommen att ta kontakt.
+
+**Erik Strömberg**  
+Student, Beteendevetenskapliga programmet med inriktning mot IT-miljö
