@@ -1,124 +1,119 @@
-# TimeLine/Dagsbalken
+# Dagsbalken
 ### Visualizing time as a cognitive and design problem
 
-## Project overview
+## Overview
 
-**TimeLine/Dagsbalken** is an Android-based design and research project that explores how time can be made more cognitively accessible through visual representation. The project approaches time not merely as a measurable unit, but as an experienced phenomenon shaped by cognition, context, and everyday practice.
+Dagsbalken is a digital service designed to make time more understandable in everyday life.
 
-The core idea is to represent the day as a **linear time bar**, making the passage of time, remaining time, and transitions between activities visible and immediately understandable. Rather than optimizing for productivity or efficiency, Dagsbalken prioritizes **clarity, orientation, and self-regulation**.
+The project explores how time can be represented visually and contextually, rather than as abstract numbers. It is particularly aimed at situations where time perception is challenging, such as for children or individuals with neurodivergent conditions.
 
-The project is developed as part of ongoing academic work within informatics and behavioral science, and functions simultaneously as:
-- a design exploration  
-- a prototype-based research project  
-- a long-term portfolio artifact  
+Instead of focusing on clock time, Dagsbalken presents the day as a sequence of activities, helping users understand what is happening now, what comes next, and how time progresses.
 
----
-
-## Background & motivation
-
-Traditional representations of time—clocks, calendars, schedules—are highly abstract. They require users to continuously translate numerical or symbolic information into meaning and action. Research within behavioral science, UX, and accessibility has shown that this abstraction can create friction, stress, and exclusion, particularly for individuals with differences in executive functioning (e.g., ADHD).
+The project is developed alongside studies in behavioural science and IT, and combines empirical observations, research, and hands-on prototyping.
 
 Dagsbalken is motivated by the question:
 
 > *What if time did not need to be calculated — but could simply be seen?*
 
-By externalizing time visually, the project aims to reduce cognitive load and support:
-- temporal awareness  
-- predictability  
-- transitions between activities  
-- everyday self-organization  
+# Dagsbalken
+
+Dagsbalken är en digital tjänst under utveckling med målet att göra tid begriplig i vardagen.
+
+Projektet tar sin utgångspunkt i ett enkelt men ofta förbisett problem: tid kommuniceras och representeras på ett sätt som förutsätter att den redan är förstådd. I praktiken är det inte alltid fallet.
+
+Särskilt i situationer som involverar barn eller personer med neuropsykiatriska funktionsnedsättningar (NPF) kan tid upplevas som abstrakt, svårtolkad och svår att förhålla sig till. Detta blir tydligt i vardagliga situationer, exempelvis vid övergångar mellan aktiviteter.
+
+> “Jag vet att det inte alltid känns som det, men nu har det gått fem minuter.”
+
+Citatet illustrerar en central utmaning: skillnaden mellan uppmätt tid och upplevd tid.
 
 ---
 
-## Design & theoretical foundation
+## Idé
 
-The project is situated at the intersection of:
+Dagsbalken syftar till att översätta tid från något abstrakt till något konkret och visuellt.
 
-- **Informatics** – information representation, sociotechnical systems, UX/HCI  
-- **Behavioral science** – cognition, self-regulation, executive functions  
-- **Design research** – research through design, exploratory prototyping  
+Istället för att visa tid som siffror och klockslag representeras dagen som en sammanhängande struktur av aktiviteter. Fokus ligger på att göra det tydligt:
 
-Time is treated as information that can be structured, visualized, and interacted with, rather than as a neutral background variable.
+- vad som händer nu  
+- vad som händer snart  
+- vad som händer sen  
 
-From a design perspective, the project emphasizes:
-- low information density  
-- clear visual hierarchy  
-- consistency over configurability  
-- visual affordances rather than textual explanation  
-
-The interface is intentionally minimal, aiming to support understanding rather than control.
+Genom att visualisera tid skapas en gemensam referensram mellan användare, vilket kan underlätta övergångar, minska stress och öka förutsägbarhet.
 
 ---
 
-## Project principles & design integrity
+## Tjänsteperspektiv
 
-Dagsbalken is developed as an exploratory design and research project grounded in both theory and lived experience. The project’s core lies not in the technology itself, but in **how people perceive, interpret, and relate to time in everyday life**.
+Dagsbalken utvecklas inte som en enskild applikation, utan som en tjänsteplattform.
 
-### Ownership and authorship  
-The project’s problem formulation, core design idea, and value foundation remain author-owned. These elements are considered non-negotiable, even in collaborative or organizational contexts.  
-Technical implementation and further development may take place in collaboration, provided that the project’s integrity is preserved.
-
-### Purpose before performance  
-Dagsbalken prioritizes meaning, clarity, and cognitive support over productivity metrics or optimization. Success is not measured solely by scale or adoption, but by alignment with the project’s original purpose.
-
-### Collaboration on clear terms  
-Collaboration with external actors is welcomed when it:
-- respects the project’s core intent  
-- is transparent and time-bounded  
-- allows for reversible decisions  
-- does not compromise authorship or direction  
-
-Collaboration is treated as a means, not an end.
-
-### Decision-making principle  
-Irreversible decisions that affect ownership, direction, or values are postponed until the project has reached sufficient maturity.  
-Reversible decisions that enable learning and exploration are encouraged early.
-
-### Helping without erasure  
-Reaching many users is a desirable outcome, but not at the cost of the project’s identity. Scalability and dissemination are secondary to conceptual integrity.
-
-Dagsbalken is not bound to a single course, organization, or timeframe. It is allowed to evolve organically, at a pace that is sustainable for its author.
+Utgångspunkten är att värde inte skapas i själva artefakten, utan i hur den används i praktiken. Därför ligger fokus på användningssituationer och vardagliga aktiviteter, snarare än enbart funktionalitet.
 
 ---
 
-## Technical overview
+## Plattform och produkter
 
-- **Platform:** Android  
-- **Language:** Kotlin  
-- **UI framework:** Jetpack Compose  
-- **Architecture focus:** declarative UI, modularity, visual hierarchy  
+Systemet är uppbyggt som en modulär plattform med separata produkter för olika kontexter:
 
-The technical implementation serves the design intent rather than the other way around. Code is treated as a medium for exploration and iteration, not as the primary research object.
+- **Dagsbalken Home** – vardagsstruktur i hemmet  
+- **Dagsbalken School** – stöd i skolmiljö och gemensamma aktiviteter  
 
----
-
-## Academic & portfolio context
-
-The project is developed within the context of interdisciplinary studies combining informatics, pedagogy, psychology, and sociology, with a strong emphasis on:
-- information systems in organizational contexts  
-- UX and digital services  
-- project-based, cross-disciplinary collaboration  
-
-Dagsbalken is designed to function as:
-- a portfolio project demonstrating design reasoning and systems thinking  
-- a prototype suitable for user studies and qualitative evaluation  
-- a potential foundation for a future bachelor’s thesis in informatics  
+Båda produkterna delar samma kärnlogik men är anpassade efter olika användningssituationer.
 
 ---
 
-## Status & future directions
+## Status
 
-Dagsbalken is an ongoing project. Current and potential future directions include:
-- user testing and qualitative interviews  
-- comparison of alternative time visualizations  
-- accessibility-focused design iterations  
-- exploration of organizational or educational contexts  
-- critical reflection on time, control, and digital support systems  
+Projektet utvecklas parallellt med studier inom informatik (beteendevetenskap i IT-miljöer).
 
-The project is intentionally not “finished”. Its value lies in continued inquiry rather than closure.
+I dagsläget finns:
+- en fungerande prototyp  
+- en modulär kodbas med separata produkter  
+- ett pågående arbete med att testa och vidareutveckla konceptet i verkliga sammanhang  
 
 ---
 
-## Author
+## Underlag
 
-Developed by Erik Strömberg, a student within behavioral science and informatics, with a focus on UX, digital services, and sociotechnical systems.
+Projektet bygger på en kombination av:
+
+- empiriska observationer från vardag och skolmiljö  
+- egna erfarenheter  
+- forskning kring tidsuppfattning, övergångar och tjänstelogik  
+
+Se `/docs` för en sammanhållen genomgång av:
+- empiri  
+- forskningsunderlag  
+- analys  
+- koncept  
+- arkitektur  
+
+---
+
+## Syfte
+
+Dagsbalken är både ett utvecklingsprojekt och ett undersökande arbete kring hur tid kan representeras på ett mer användbart sätt.
+
+Ambitionen är att bidra till:
+- ökad självständighet  
+- minskad stress vid övergångar  
+- en mer gemensam förståelse av tid i vardagen  
+
+---
+
+## Om utvecklaren
+
+Jag studerar beteendevetenskap med inriktning mot IT-miljö och utvecklar Dagsbalken vid sidan av mina studier.
+
+Min bakgrund sträcker sig från vård till IT. Jag är utbildad undersköterska och har arbetat totalt 14 år inom sjukvård och kommunal hemtjänst. I dessa miljöer blev det tydligt hur avgörande struktur, tydlighet och förutsägbarhet är i människors vardag, särskilt i situationer där kognitiv belastning redan är hög.
+
+Genom mitt uppdrag som skyddsombud fick jag ytterligare fördjupa ett systemperspektiv, där olika behov, regelverk och verkliga arbetssituationer behöver vägas mot varandra. Det innebar att förstå hur beslut och system påverkar människor i praktiken, inte bara i teorin.
+
+Parallellt arbetade jag som digitaliseringshandledare i nära samarbete med IT-avdelning och digitaliseringsenhet, med fokus på att införa och anpassa digitala verktyg i verksamheten. Det innebar att översätta teknik till något som faktiskt fungerar i praktiken för både personal och brukare.
+
+Mitt intresse för teknik började tidigt. Jag läste IT-media med inriktning mot webbdesign och skrev min första HTML-kod redan som tioåring. Kombinationen av tekniskt intresse och erfarenhet från verksamheter där digitala lösningar möter verkliga behov har präglat hur jag närmar mig utveckling.
+
+Dagsbalken har vuxit fram i skärningspunkten mellan dessa erfarenheter. Projektet är både ett sätt att utveckla en konkret tjänst och att undersöka hur digitala system kan utformas för att bättre stödja hur människor faktiskt uppfattar och hanterar tid i vardagen.
+
+Projektet är under aktiv utveckling. Vid intresse eller frågor, ta gärna kontakt.
+Erik Strömberg
