@@ -5,3 +5,7 @@
 ## 2025-12-20 - Caching Native Assets in Widget Generators
 **Learning:** Even simple calls like `Typeface.create()` involve JNI overhead. In high-frequency paths like widget bitmap generation (every minute), repeated creation of identical immutable objects (fonts) is wasteful.
 **Action:** Use `ConcurrentHashMap.computeIfAbsent` to cache immutable native resources like `Typeface` in the singleton generator, ensuring thread safety and reducing JNI calls.
+
+## 2025-12-21 - Inverse Division in Drawing Loops
+**Learning:** Division is expensive in tight loops (like pixel calculations for every minute/event in widgets).
+**Action:** Pre-calculate the inverse (e.g., `pixelsPerMinute`) and use multiplication to save cycles.
