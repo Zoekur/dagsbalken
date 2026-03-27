@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -50,7 +51,7 @@ class TimerRepository(private val context: Context) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
             val backupString = preferences[TIMER_TEMPLATES_BACKUP_KEY]
-            val initialList = deserializeTimerTemplatesWithRecovery(jsonString, backupString)
+            val initialList = deserializeTimerTemplatesWithRecovery(jsonString, backupString, throwOnFailure = true)
             val currentList = initialList.toMutableList()
 
             val index = currentList.indexOfFirst { it.id == timer.id }
@@ -71,7 +72,7 @@ class TimerRepository(private val context: Context) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[TIMER_TEMPLATES_KEY] ?: "[]"
             val backupString = preferences[TIMER_TEMPLATES_BACKUP_KEY]
-            val initialList = deserializeTimerTemplatesWithRecovery(jsonString, backupString)
+            val initialList = deserializeTimerTemplatesWithRecovery(jsonString, backupString, throwOnFailure = true)
             val currentList = initialList.toMutableList()
 
             currentList.removeAll { it.id == timerId }
@@ -137,8 +138,13 @@ class TimerRepository(private val context: Context) {
     /**
      * Attempts to deserialize timer templates with item-level recovery.
      * On complete failure, attempts to restore from backup.
+     * @param throwOnFailure If true, throws IOException instead of returning empty list on total failure.
      */
-    private fun deserializeTimerTemplatesWithRecovery(jsonString: String, backupString: String?): List<TimerModel> {
+    private fun deserializeTimerTemplatesWithRecovery(
+        jsonString: String,
+        backupString: String?,
+        throwOnFailure: Boolean = false
+    ): List<TimerModel> {
         return try {
             // First, try to parse the entire JSON array
             val jsonArray = JSONArray(jsonString)
@@ -176,6 +182,9 @@ class TimerRepository(private val context: Context) {
                     Log.e(TAG, "Backup also corrupted", backupError)
                 }
             }
+            if (throwOnFailure) {
+                throw IOException("Failed to deserialize timer templates and backup", e)
+            }
             emptyList()
         }
     }
@@ -193,7 +202,7 @@ class TimerRepository(private val context: Context) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
             val backupString = preferences[ACTIVE_TIMERS_BACKUP_KEY]
-            val initialList = deserializeActiveTimersWithRecovery(jsonString, backupString)
+            val initialList = deserializeActiveTimersWithRecovery(jsonString, backupString, throwOnFailure = true)
             val currentList = initialList.toMutableList()
 
             currentList.add(block)
@@ -209,7 +218,7 @@ class TimerRepository(private val context: Context) {
         context.timerDataStore.edit { preferences ->
             val jsonString = preferences[ACTIVE_TIMERS_KEY] ?: "[]"
             val backupString = preferences[ACTIVE_TIMERS_BACKUP_KEY]
-            val initialList = deserializeActiveTimersWithRecovery(jsonString, backupString)
+            val initialList = deserializeActiveTimersWithRecovery(jsonString, backupString, throwOnFailure = true)
             val currentList = initialList.toMutableList()
 
             currentList.removeAll { it.id == blockId }
@@ -287,8 +296,13 @@ class TimerRepository(private val context: Context) {
     /**
      * Attempts to deserialize active timers with item-level recovery.
      * On complete failure, attempts to restore from backup.
+     * @param throwOnFailure If true, throws IOException instead of returning empty list on total failure.
      */
-    private fun deserializeActiveTimersWithRecovery(jsonString: String, backupString: String?): List<CustomBlock> {
+    private fun deserializeActiveTimersWithRecovery(
+        jsonString: String,
+        backupString: String?,
+        throwOnFailure: Boolean = false
+    ): List<CustomBlock> {
         return try {
             // First, try to parse the entire JSON array
             val jsonArray = JSONArray(jsonString)
@@ -325,6 +339,9 @@ class TimerRepository(private val context: Context) {
                 } catch (backupError: Exception) {
                     Log.e(TAG, "Backup also corrupted", backupError)
                 }
+            }
+            if (throwOnFailure) {
+                throw IOException("Failed to deserialize active timers and backup", e)
             }
             emptyList()
         }
