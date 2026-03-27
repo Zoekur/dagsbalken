@@ -119,6 +119,10 @@ class WeatherRepository(private val context: Context) {
         @Volatile private var cachesDirty = false
         private val cacheLoadLock = Any()
 
+        internal fun isValidSearchQuery(query: String): Boolean {
+            return query.length in 2..100
+        }
+
         private fun normalizedQuery(query: String): String = query.trim().lowercase(Locale.getDefault())
         private fun reverseKey(lat: Double, lon: Double): String = String.format(Locale.US, "%.4f,%.4f", lat, lon)
         private fun normalizeProviderName(provider: String?): String = when (provider?.trim()) {
@@ -443,7 +447,7 @@ class WeatherRepository(private val context: Context) {
 
     // Sök efter platser via Open-Meteo Geocoding API
     suspend fun searchLocations(query: String): List<LocationSuggestion> {
-        if (query.length < 2) return emptyList()
+        if (!isValidSearchQuery(query)) return emptyList()
         val suggestions = mutableListOf<LocationSuggestion>()
         try {
             val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query, "UTF-8")}&count=5&language=sv&format=json"
