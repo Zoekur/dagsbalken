@@ -95,10 +95,11 @@ class WeatherRepository(private val context: Context) {
         fun displayName(): String = if (!country.isNullOrBlank()) "$name, $country" else name
     }
     private val dataStore = context.dataStore
-    private val httpClient: OkHttpClient by lazy { createHttpClient() }
 
     companion object {
         private const val TAG = "WeatherRepository"
+        // Shared OkHttpClient to prevent resource exhaustion from frequent instantiation (e.g. in Widgets)
+        private val httpClient: OkHttpClient by lazy { createHttpClient() }
         private const val GEOCODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6h
         private const val CACHE_MAX_ENTRIES = 64
         private const val PROVIDER_OPEN_METEO = "Open-Meteo"
