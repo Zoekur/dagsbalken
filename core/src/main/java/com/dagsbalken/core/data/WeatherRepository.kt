@@ -245,6 +245,10 @@ class WeatherRepository(private val context: Context) {
                 true
             } else false
         }
+
+        fun isValidSearchQuery(query: String): Boolean {
+            return query.length in 2..100
+        }
     }
 
     private suspend fun ensureCachesLoaded() {
@@ -443,7 +447,7 @@ class WeatherRepository(private val context: Context) {
 
     // Sök efter platser via Open-Meteo Geocoding API
     suspend fun searchLocations(query: String): List<LocationSuggestion> {
-        if (query.length < 2) return emptyList()
+        if (!isValidSearchQuery(query)) return emptyList()
         val suggestions = mutableListOf<LocationSuggestion>()
         try {
             val url = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query, "UTF-8")}&count=5&language=sv&format=json"
