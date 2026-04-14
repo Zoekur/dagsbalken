@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug: Kärnbalken",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/packages/karnbalken/src",
+            "sourceMapPathOverrides": {
+                "/@fs/*": "/*"
+            }
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug: Klassrumsbalken",
+            "url": "http://localhost:5176",
+            "webRoot": "${workspaceFolder}/packages/klassrumsbalken/src",
+            "sourceMapPathOverrides": {
+                "/@fs/*": "/*"
+            }
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug: Hembalken",
+            "url": "http://localhost:5175",
+            "webRoot": "${workspaceFolder}/packages/hembalken/src",
+            "sourceMapPathOverrides": {
+                "/@fs/*": "/*"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Alla appar",
+            "configurations": [
+                "Debug: Kärnbalken",
+                "Debug: Klassrumsbalken"
+            ]
+        }
+    ]
+}

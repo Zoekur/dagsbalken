@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/vite-env.d.ts","./src/components/ActivityCards.tsx","./src/data/demoSchedule.ts","./src/hooks/useCurrentActivity.ts","./src/hooks/useMinuteTicker.ts","./src/screens/ClassroomScreen.tsx"],"version":"6.0.2"}
