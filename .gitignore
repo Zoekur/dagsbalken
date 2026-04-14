@@ -34,3 +34,16 @@ proguard/
 .DS_Store
 **/thumbs.db
 android-sdk/
+
+# Node / JS
+node_modules/
+package-lock.json
+
+# Build output (web)
+packages/*/dist/
+packages/*/.turbo/
+packages/*/tsconfig.tsbuildinfo
+.turbo/
+
+# VS Code profiling
+*.cpuprofile
